@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pineapple Poker Equity Calculator</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #0f5132; color: white; }
+        .container { background: white; color: black; border-radius: 10px; padding: 30px; margin: 20px 0; }
+        .player-section { display: inline-block; width: 45%; margin: 10px; text-align: center; }
+        .card-input { width: 40px; height: 60px; margin: 5px; text-align: center; font-size: 16px; }
+        .community-cards { text-align: center; margin: 20px 0; }
+        .results { margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+        button { padding: 12px 24px; margin: 10px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; }
+        .calculate-btn { background: #28a745; color: white; }
+        .calculate-btn:hover { background: #218838; }
+        .loading { background: #dc3545; }
+        .clear-btn { background: #6c757d; color: white; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .loading-status { background: #fff3cd; color: #856404; }
+        .error { background: #f8d7da; color: #721c24; }
+        .success { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <h1>🃏 Pineapple Poker Equity Calculator</h1>
+    
+    <div class="container">
+        <div class="player-section">
+            <h3>Player 1 (3 Cards)</h3>
+            <input type="text" class="card-input" id="p1c1" placeholder="Ac" maxlength="2">
+            <input type="text" class="card-input" id="p1c2" placeholder="Ah" maxlength="2">
+            <input type="text" class="card-input" id="p1c3" placeholder="Th" maxlength="2">
+        </div>
+        
+        <div class="player-section">
+            <h3>Player 2 (3 Cards)</h3>
+            <input type="text" class="card-input" id="p2c1" placeholder="3s" maxlength="2">
+            <input type="text" class="card-input" id="p2c2" placeholder="Kc" maxlength="2">
+            <input type="text" class="card-input" id="p2c3" placeholder="6h" maxlength="2">
+        </div>
+        
+        <div class="community-cards">
+            <h3>Community Cards (Optional)</h3>
+            <input type="text" class="card-input" id="cc1" placeholder="" maxlength="2">
+            <input type="text" class="card-input" id="cc2" placeholder="" maxlength="2">
+            <input type="text" class="card-input" id="cc3" placeholder="" maxlength="2">
+            <input type="text" class="card-input" id="cc4" placeholder="" maxlength="2">
+            <input type="text" class="card-input" id="cc5" placeholder="" maxlength="2">
+        </div>
+        
+        <div style="text-align: center;">
+            <label>Simulations: </label>
+            <select id="simulations">
+                <option value="10000">10,000 (Fast)</option>
+                <option value="50000" selected>50,000 (Balanced)</option>
+                <option value="100000">100,000 (Precise)</option>
+            </select>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <button id="calculateBtn" class="calculate-btn" onclick="calculateEquity()">
+                Calculate Equity
+            </button>
+            <button class="clear-btn" onclick="clearAll()">Clear All</button>
+        </div>
+        
+        <div id="status"></div>
+        <div id="results"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
