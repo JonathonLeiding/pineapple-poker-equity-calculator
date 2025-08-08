@@ -148,6 +148,11 @@
             background: #218838;
         }
         
+        .btn-green:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
         .status {
             padding: 15px;
             margin: 20px 0;
@@ -470,43 +475,23 @@
                             pyodide.runPython(code);
                             console.log(`✅ Loaded ${file}`);
                         } else {
-                            console.log(`⚠️ Could not fetch ${file}`);
+                            console.log(`⚠️ Could not fetch ${file}: ${response.status}`);
                         }
                     } catch (error) {
                         console.log(`⚠️ Error loading ${file}:`, error.message);
                     }
                 }
                 
-                // Add wrapper function
+                // Test basic functionality
                 pyodide.runPython(`
-def web_calculate_equity(p1_cards, p2_cards, community_cards=[], sims=50000):
-    """Wrapper function for web interface"""
-    try:
-        import monte_carlo as mc
-        from Cardset import Cardset
-        from player import Player
-        
-        deck = Cardset()
-        hero = Player()
-        villain = Player()
-        
-        hero.set_cards(p1_cards, deck)
-        villain.set_cards(p2_cards, deck)
-        
-        if len(community_cards) > 0:
-            deck.set_community_cards(community_cards)
-            results = mc.estimate_equity(hero, villain, deck, sims, num_cards=len(community_cards), set_board=community_cards)
-        else:
-            results = mc.estimate_equity(hero, villain, deck, sims)
-        
-        return {
-            'player1_equity': float(results[0]),
-            'player2_equity': float(results[1]),
-            'ties': float(results[2]),
-            'simulations': sims
-        }
-    except Exception as e:
-        return {'error': str(e)}
+print("Testing imports...")
+try:
+    from Cardset import Cardset
+    from player import Player
+    import monte_carlo as mc
+    print("✅ All imports successful!")
+except Exception as e:
+    print(f"❌ Import error: {e}")
                 `);
                 
                 isReady = true;
@@ -605,8 +590,10 @@ def web_calculate_equity(p1_cards, p2_cards, community_cards=[], sims=50000):
         
         // Main calculation
         async function calculate() {
-            if (!isReady) await initPython();
-            if (!isReady) return;
+            if (!isReady) {
+                showStatus('⏳ Python environment not ready yet. Please wait...', 'loading');
+                return;
+            }
             
             const btn = document.getElementById('calcBtn');
             btn.textContent = 'Calculating...';
@@ -618,25 +605,82 @@ def web_calculate_equity(p1_cards, p2_cards, community_cards=[], sims=50000):
                 const communityCards = getPlayerCards('community');
                 const sims = parseInt(document.getElementById('simulations').value);
                 
-                if (p1Cards.length !== 3 || p2Cards.length !== 3) {
-                    throw new Error('Both players need exactly 3 cards');
+                // Validation
+                if (p1Cards.length !== 3) {
+                    throw new Error('Player 1 needs exactly 3 cards');
                 }
+                if (p2Cards.length !== 3) {
+                    throw new Error('Player 2 needs exactly 3 cards');
+                }
+                
+                console.log('Input data:', { p1Cards, p2Cards, communityCards, sims });
                 
                 showStatus(`Running ${sims.toLocaleString()} simulations...`, 'loading');
                 
-                // Call Python function
-                pyodide.globals.set("p1_cards", p1Cards);
-                pyodide.globals.set("p2_cards", p2Cards);
-                pyodide.globals.set("community_cards", communityCards);
-                pyodide.globals.set("num_sims", sims);
+                // Call Python function with proper error handling
+                const pythonCode = `
+try:
+    from Cardset import Cardset
+    from player import Player
+    import monte_carlo as mc
+    
+    # Create deck and players
+    deck = Cardset()
+    hero = Player()
+    villain = Player()
+    
+    # Set cards (this will automatically block them in the deck)
+    hero.set_cards([${p1Cards.map(c => `"${c}"`).join(', ')}], deck)
+    villain.set_cards([${p2Cards.map(c => `"${c}"`).join(', ')}], deck)
+    
+    # Set community cards if any
+    community_cards = [${communityCards.map(c => `"${c}"`).join(', ')}]
+    if len(community_cards) > 0:
+        deck.set_community_cards(community_cards)
+    
+    # Calculate equity
+    if len(community_cards) > 0:
+        equity_results = mc.estimate_equity(hero, villain, deck, ${sims}, num_cards=len(community_cards), set_board=community_cards)
+    else:
+        equity_results = mc.estimate_equity(hero, villain, deck, ${sims})
+    
+    # Return as dictionary
+    result = {
+        'player1_equity': float(equity_results[0]),
+        'player2_equity': float(equity_results[1]), 
+        'ties': float(equity_results[2]),
+        'simulations': ${sims},
+        'success': True
+    }
+    
+except Exception as e:
+    result = {
+        'error': str(e),
+        'success': False
+    }
+
+result
+                `;
                 
-                const results = pyodide.runPython('web_calculate_equity(p1_cards, p2_cards, community_cards, num_sims)');
+                console.log('Executing Python code...');
+                const results = pyodide.runPython(pythonCode);
+                console.log('Python results:', results);
                 
-                if (results.error) {
-                    throw new Error(results.error);
+                // Convert Python dict to JavaScript object if needed
+                let jsResults;
+                if (typeof results === 'object' && results !== null) {
+                    jsResults = results.toJs ? results.toJs() : results;
+                } else {
+                    jsResults = results;
                 }
                 
-                showResults(results, p1Cards, p2Cards);
+                console.log('JS results:', jsResults);
+                
+                if (!jsResults.success) {
+                    throw new Error(jsResults.error || 'Unknown Python error');
+                }
+                
+                showResults(jsResults, p1Cards, p2Cards, communityCards);
                 showStatus('✅ Calculation complete!', 'success');
                 
             } catch (error) {
@@ -648,36 +692,48 @@ def web_calculate_equity(p1_cards, p2_cards, community_cards=[], sims=50000):
             }
         }
         
-        function showResults(results, p1Cards, p2Cards) {
-            const p1Pct = (results.player1_equity * 100).toFixed(1);
-            const p2Pct = (results.player2_equity * 100).toFixed(1);
-            const tiePct = (results.ties * 100).toFixed(1);
-            
-            document.getElementById('results').innerHTML = `
-                <div class="results">
-                    <h3>📊 Equity Results</h3>
-                    <div class="equity-row">
-                        <div class="equity-item">
-                            <h4>Player 1</h4>
-                            <div class="equity-value p1-equity">${p1Pct}%</div>
-                            <div style="font-size: 14px; color: #666;">${p1Cards.join(' ')}</div>
+        function showResults(results, p1Cards, p2Cards, communityCards) {
+            try {
+                const p1Pct = (results.player1_equity * 100).toFixed(1);
+                const p2Pct = (results.player2_equity * 100).toFixed(1);
+                const tiePct = (results.ties * 100).toFixed(1);
+                const simCount = results.simulations || 0;
+                
+                const communityText = communityCards.length > 0 ? 
+                    `<div style="text-align: center; margin: 15px 0; color: #666;">
+                        Community: ${communityCards.join(' ')}
+                    </div>` : '';
+                
+                document.getElementById('results').innerHTML = `
+                    <div class="results">
+                        <h3>📊 Equity Results</h3>
+                        ${communityText}
+                        <div class="equity-row">
+                            <div class="equity-item">
+                                <h4>Player 1</h4>
+                                <div class="equity-value p1-equity">${p1Pct}%</div>
+                                <div style="font-size: 14px; color: #666;">${p1Cards.join(' ')}</div>
+                            </div>
+                            <div class="equity-item">
+                                <h4>Player 2</h4>
+                                <div class="equity-value p2-equity">${p2Pct}%</div>
+                                <div style="font-size: 14px; color: #666;">${p2Cards.join(' ')}</div>
+                            </div>
+                            <div class="equity-item">
+                                <h4>Ties</h4>
+                                <div class="equity-value tie-equity">${tiePct}%</div>
+                                <div style="font-size: 14px; color: #666;">Split pot</div>
+                            </div>
                         </div>
-                        <div class="equity-item">
-                            <h4>Player 2</h4>
-                            <div class="equity-value p2-equity">${p2Pct}%</div>
-                            <div style="font-size: 14px; color: #666;">${p2Cards.join(' ')}</div>
-                        </div>
-                        <div class="equity-item">
-                            <h4>Ties</h4>
-                            <div class="equity-value tie-equity">${tiePct}%</div>
-                            <div style="font-size: 14px; color: #666;">Split pot</div>
+                        <div style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
+                            Based on ${simCount.toLocaleString()} Monte Carlo simulations
                         </div>
                     </div>
-                    <div style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
-                        Based on ${results.simulations.toLocaleString()} Monte Carlo simulations
-                    </div>
-                </div>
-            `;
+                `;
+            } catch (error) {
+                console.error('Error displaying results:', error);
+                showStatus('❌ Error displaying results: ' + error.message, 'error');
+            }
         }
         
         function showStatus(message, type = '') {
