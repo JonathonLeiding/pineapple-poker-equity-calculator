@@ -6,12 +6,11 @@
     <title>Pineapple Poker Equity Calculator</title>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, sans-serif;
             background: linear-gradient(135deg, #0f5132 0%, #198754 100%);
             min-height: 100vh;
+            margin: 0;
             color: white;
         }
         
@@ -24,12 +23,6 @@
         .header h1 {
             font-size: 3rem;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-        
-        .header p {
-            font-size: 1.2rem;
-            opacity: 0.9;
         }
         
         .container {
@@ -38,38 +31,40 @@
             padding: 20px;
         }
         
-        .calculator-section {
+        .calculator {
             background: white;
             color: #333;
             border-radius: 15px;
             padding: 40px;
             margin: 30px 0;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
         
-        .players-container {
+        .players {
             display: flex;
             justify-content: space-around;
             margin-bottom: 40px;
             gap: 20px;
         }
         
-        .player-section {
+        .player {
             text-align: center;
             flex: 1;
         }
         
-        .player-section h3 {
-            color: #2c5aa0;
+        .player h3 {
             margin-bottom: 20px;
             font-size: 1.5rem;
         }
         
-        .player-2 h3 {
+        .player1 h3 {
+            color: #2c5aa0;
+        }
+        
+        .player2 h3 {
             color: #dc3545;
         }
         
-        .card-row {
+        .cards {
             display: flex;
             justify-content: center;
             gap: 10px;
@@ -78,9 +73,9 @@
         .card {
             width: 60px;
             height: 84px;
-            border: 2px solid #ddd;
+            border: 2px dashed #ccc;
             border-radius: 8px;
-            background: white;
+            background: #f8f9fa;
             cursor: pointer;
             display: flex;
             flex-direction: column;
@@ -92,28 +87,14 @@
         .card:hover {
             border-color: #007bff;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
         
-        .card.empty {
-            border-style: dashed;
-            border-color: #ccc;
-            background: #f8f9fa;
+        .card.filled {
+            border: 2px solid #28a745;
+            background: white;
         }
         
-        .rank {
-            font-size: 16px;
-            font-weight: bold;
-        }
-        
-        .suit {
-            font-size: 20px;
-        }
-        
-        .red { color: #dc3545; }
-        .black { color: #333; }
-        
-        .community-section {
+        .community {
             text-align: center;
             margin: 40px 0;
             padding: 30px;
@@ -121,7 +102,7 @@
             border-radius: 10px;
         }
         
-        .community-section h3 {
+        .community h3 {
             color: #495057;
             margin-bottom: 20px;
         }
@@ -132,14 +113,13 @@
         }
         
         .controls select {
-            padding: 10px 15px;
+            padding: 10px;
             margin: 0 10px;
-            border: 1px solid #ddd;
             border-radius: 5px;
-            font-size: 16px;
+            border: 1px solid #ddd;
         }
         
-        .button-group {
+        .buttons {
             text-align: center;
             margin: 30px 0;
         }
@@ -147,35 +127,25 @@
         button {
             padding: 15px 30px;
             margin: 0 10px;
-            font-size: 16px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
+            font-weight: bold;
+            font-size: 16px;
         }
         
-        .btn-primary {
+        .btn-green {
             background: #28a745;
             color: white;
         }
         
-        .btn-primary:hover {
-            background: #218838;
-        }
-        
-        .btn-secondary {
+        .btn-gray {
             background: #6c757d;
             color: white;
         }
         
-        .btn-secondary:hover {
-            background: #545b62;
-        }
-        
-        .loading {
-            opacity: 0.7;
-            cursor: not-allowed;
+        .btn-green:hover {
+            background: #218838;
         }
         
         .status {
@@ -183,25 +153,21 @@
             margin: 20px 0;
             border-radius: 8px;
             text-align: center;
-            font-weight: 500;
         }
         
-        .loading-status {
+        .loading {
             background: #fff3cd;
             color: #856404;
-            border: 1px solid #ffeaa7;
-        }
-        
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f1aeb5;
         }
         
         .success {
             background: #d4edda;
             color: #155724;
-            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
         }
         
         .results {
@@ -211,54 +177,32 @@
             border-radius: 12px;
         }
         
-        .equity-display {
-            display: flex;
-            justify-content: space-around;
-            margin: 20px 0;
+        .results h3 {
             text-align: center;
+            margin-bottom: 20px;
+            color: #333;
         }
         
-        .equity-item h4 {
-            color: #666;
-            margin-bottom: 10px;
+        .equity-row {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .equity-item {
+            flex: 1;
         }
         
         .equity-value {
             font-size: 2rem;
             font-weight: bold;
+            margin: 10px 0;
         }
         
-        .player1-equity { color: #2c5aa0; }
-        .player2-equity { color: #dc3545; }
-        .ties-equity { color: #6c757d; }
-        
-        .info-section {
-            background: rgba(255,255,255,0.95);
-            color: #333;
-            border-radius: 15px;
-            padding: 40px;
-            margin: 30px 0;
-        }
-        
-        .info-section h2 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #2c5aa0;
-        }
-        
-        .info-content {
-            line-height: 1.6;
-        }
-        
-        .info-content h4 {
-            color: #495057;
-            margin: 20px 0 10px 0;
-        }
-        
-        .info-content ul {
-            margin-left: 20px;
-            margin-bottom: 15px;
-        }
+        .p1-equity { color: #2c5aa0; }
+        .p2-equity { color: #dc3545; }
+        .tie-equity { color: #6c757d; }
         
         .modal {
             display: none;
@@ -269,12 +213,12 @@
             height: 100%;
             background: rgba(0,0,0,0.8);
             z-index: 1000;
-            align-items: center;
-            justify-content: center;
         }
         
         .modal.show {
             display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .modal-content {
@@ -286,40 +230,13 @@
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
-            position: relative;
-        }
-        
-        .modal h3 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        
-        .close-btn {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #666;
-        }
-        
-        .suit-header {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 24px;
         }
         
         .card-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 8px;
-            max-height: 400px;
-            overflow-y: auto;
+            margin: 20px 0;
         }
         
         .card-option {
@@ -332,7 +249,6 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s;
             font-size: 14px;
         }
         
@@ -348,15 +264,34 @@
             opacity: 0.5;
         }
         
-        .remove-card {
-            width: 100%;
-            background: #dc3545;
-            color: white;
-            padding: 12px;
-            margin-top: 20px;
-            border-radius: 6px;
-            border: none;
-            cursor: pointer;
+        .red { color: #dc3545; }
+        .black { color: #333; }
+        
+        .info {
+            background: rgba(255,255,255,0.95);
+            color: #333;
+            border-radius: 15px;
+            padding: 40px;
+            margin: 30px 0;
+        }
+        
+        .info h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c5aa0;
+        }
+        
+        .info h4 {
+            color: #495057;
+            margin: 20px 0 10px 0;
+        }
+        
+        .info ul {
+            margin: 10px 0 20px 20px;
+        }
+        
+        .info li {
+            margin: 5px 0;
         }
     </style>
 </head>
@@ -367,74 +302,74 @@
     </div>
     
     <div class="container">
-        <div class="calculator-section">
-            <div class="players-container">
-                <div class="player-section">
-                    <h3>👤 Player 1</h3>
-                    <div class="card-row">
-                        <div class="card empty" data-player="1" data-index="0" onclick="openCardSelector(this)">
-                            <div class="rank">?</div>
+        <div class="calculator">
+            <div class="players">
+                <div class="player player1">
+                    <h3>Player 1</h3>
+                    <div class="cards">
+                        <div class="card" data-player="1" data-index="0" onclick="openSelector(this)">
+                            <div>?</div>
                         </div>
-                        <div class="card empty" data-player="1" data-index="1" onclick="openCardSelector(this)">
-                            <div class="rank">?</div>
+                        <div class="card" data-player="1" data-index="1" onclick="openSelector(this)">
+                            <div>?</div>
                         </div>
-                        <div class="card empty" data-player="1" data-index="2" onclick="openCardSelector(this)">
-                            <div class="rank">?</div>
+                        <div class="card" data-player="1" data-index="2" onclick="openSelector(this)">
+                            <div>?</div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="player-section player-2">
-                    <h3>👤 Player 2</h3>
-                    <div class="card-row">
-                        <div class="card empty" data-player="2" data-index="0" onclick="openCardSelector(this)">
-                            <div class="rank">?</div>
+                <div class="player player2">
+                    <h3>Player 2</h3>
+                    <div class="cards">
+                        <div class="card" data-player="2" data-index="0" onclick="openSelector(this)">
+                            <div>?</div>
                         </div>
-                        <div class="card empty" data-player="2" data-index="1" onclick="openCardSelector(this)">
-                            <div class="rank">?</div>
+                        <div class="card" data-player="2" data-index="1" onclick="openSelector(this)">
+                            <div>?</div>
                         </div>
-                        <div class="card empty" data-player="2" data-index="2" onclick="openCardSelector(this)">
-                            <div class="rank">?</div>
+                        <div class="card" data-player="2" data-index="2" onclick="openSelector(this)">
+                            <div>?</div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div class="community-section">
-                <h3>🏛️ Community Cards (Optional)</h3>
-                <div class="card-row">
-                    <div class="card empty" data-player="community" data-index="0" onclick="openCardSelector(this)">
-                        <div class="rank">?</div>
+            <div class="community">
+                <h3>Community Cards (Optional)</h3>
+                <div class="cards">
+                    <div class="card" data-player="community" data-index="0" onclick="openSelector(this)">
+                        <div>?</div>
                     </div>
-                    <div class="card empty" data-player="community" data-index="1" onclick="openCardSelector(this)">
-                        <div class="rank">?</div>
+                    <div class="card" data-player="community" data-index="1" onclick="openSelector(this)">
+                        <div>?</div>
                     </div>
-                    <div class="card empty" data-player="community" data-index="2" onclick="openCardSelector(this)">
-                        <div class="rank">?</div>
+                    <div class="card" data-player="community" data-index="2" onclick="openSelector(this)">
+                        <div>?</div>
                     </div>
-                    <div class="card empty" data-player="community" data-index="3" onclick="openCardSelector(this)">
-                        <div class="rank">?</div>
+                    <div class="card" data-player="community" data-index="3" onclick="openSelector(this)">
+                        <div>?</div>
                     </div>
-                    <div class="card empty" data-player="community" data-index="4" onclick="openCardSelector(this)">
-                        <div class="rank">?</div>
+                    <div class="card" data-player="community" data-index="4" onclick="openSelector(this)">
+                        <div>?</div>
                     </div>
                 </div>
             </div>
             
             <div class="controls">
-                <label for="simulations">Simulations:</label>
+                <label>Simulations:</label>
                 <select id="simulations">
-                    <option value="10000">10,000 (Fast)</option>
-                    <option value="50000" selected>50,000 (Balanced)</option>
-                    <option value="100000">100,000 (Precise)</option>
+                    <option value="10000">10,000</option>
+                    <option value="50000" selected>50,000</option>
+                    <option value="100000">100,000</option>
                 </select>
             </div>
             
-            <div class="button-group">
-                <button id="calculateBtn" class="btn-primary" onclick="calculateEquity()">
+            <div class="buttons">
+                <button id="calcBtn" class="btn-green" onclick="calculate()">
                     Calculate Equity
                 </button>
-                <button class="btn-secondary" onclick="clearAll()">
+                <button class="btn-gray" onclick="clearAll()">
                     Clear All
                 </button>
             </div>
@@ -443,50 +378,43 @@
             <div id="results"></div>
         </div>
         
-        <!-- Pineapple Poker Info -->
-        <div class="info-section">
-            <h2>📚 About Pineapple Hold'em Poker</h2>
+        <!-- Info Section -->
+        <div class="info">
+            <h2>About Pineapple Hold'em Poker</h2>
             
-            <div class="info-content">
-                <h4>🃏 How It Works</h4>
-                <ul>
-                    <li><strong>3 Hole Cards:</strong> Each player gets 3 cards instead of 2</li>
-                    <li><strong>Discard Decision:</strong> Must discard 1 card before the flop</li>
-                    <li><strong>More Action:</strong> Creates bigger pots and more drawing opportunities</li>
-                    <li><strong>Strategy Shift:</strong> Hand selection becomes more complex and important</li>
-                </ul>
-                
-                <h4>🎯 Key Strategy Points</h4>
-                <ul>
-                    <li><strong>Pocket Pairs:</strong> Increase in value due to set potential</li>
-                    <li><strong>Suited Connectors:</strong> Much stronger due to straight/flush draws</li>
-                    <li><strong>Position Matters:</strong> You see opponents' discards before deciding</li>
-                    <li><strong>Drawing Hands:</strong> More valuable than in regular Hold'em</li>
-                </ul>
-                
-                <h4>🧮 This Calculator</h4>
-                <ul>
-                    <li><strong>Monte Carlo Simulation:</strong> Uses proven statistical methods</li>
-                    <li><strong>All Combinations:</strong> Tests all possible 2-card selections from your 3-card hand</li>
-                    <li><strong>Accurate Results:</strong> 50,000+ simulations provide reliable equity estimates</li>
-                    <li><strong>Post-Flop Analysis:</strong> Add community cards to see how equity changes</li>
-                </ul>
-                
-                <div style="margin-top: 30px; padding: 20px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
-                    <h4 style="color: #1976d2;">💡 Pro Tip</h4>
-                    <p>Pre-flop equity shows raw hand strength, but post-flop equity reveals how board texture affects your chances. Use this tool to study common scenarios and improve your Pineapple decision-making!</p>
-                </div>
-            </div>
+            <h4>🃏 How It Works</h4>
+            <ul>
+                <li><strong>3 Hole Cards:</strong> Each player receives 3 cards instead of 2</li>
+                <li><strong>Discard Decision:</strong> Must discard 1 card before the flop</li>
+                <li><strong>Regular Play:</strong> Continues like normal Texas Hold'em after discard</li>
+                <li><strong>Best 5 Cards:</strong> Make the best hand from remaining 2 hole cards + 5 community cards</li>
+            </ul>
+            
+            <h4>🎯 Strategy Differences</h4>
+            <ul>
+                <li><strong>More Drawing Hands:</strong> Suited connectors and drawing hands gain value</li>
+                <li><strong>Pocket Pairs Stronger:</strong> Better odds of making sets</li>
+                <li><strong>Position Crucial:</strong> Seeing opponents' discards provides information</li>
+                <li><strong>Bigger Pots:</strong> More action due to stronger starting hands</li>
+            </ul>
+            
+            <h4>🧮 About This Calculator</h4>
+            <ul>
+                <li><strong>Monte Carlo Method:</strong> Runs thousands of simulations for accuracy</li>
+                <li><strong>All Combinations:</strong> Tests all possible 2-card selections from 3-card hands</li>
+                <li><strong>Pre & Post-Flop:</strong> Calculate equity before and after community cards</li>
+                <li><strong>Proven Algorithms:</strong> Based on standard poker evaluation methods</li>
+            </ul>
         </div>
     </div>
 
     <!-- Card Selector Modal -->
-    <div id="cardModal" class="modal">
+    <div id="modal" class="modal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeCardSelector()">×</button>
             <h3>Select Card</h3>
+            <button onclick="closeSelector()" style="float: right; background: none; border: none; font-size: 20px;">×</button>
             
-            <div class="suit-header">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; text-align: center; font-size: 20px;">
                 <div class="black">♠</div>
                 <div class="red">♥</div>
                 <div class="red">♦</div>
@@ -495,18 +423,19 @@
             
             <div class="card-grid" id="cardGrid"></div>
             
-            <button class="remove-card" onclick="removeCard()" id="removeBtn" style="display: none;">
+            <button onclick="removeCard()" style="width: 100%; background: #dc3545; color: white; padding: 10px; border: none; border-radius: 5px; margin-top: 15px; display: none;" id="removeBtn">
                 Remove Card
             </button>
         </div>
     </div>
 
     <script>
-        let pyodide;
-        let isInitialized = false;
-        let isCalculating = false;
-        let currentCardElement = null;
+        // Global variables
+        let pyodide = null;
+        let isReady = false;
+        let currentCard = null;
         
+        // Card definitions
         const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
         const suits = [
             { symbol: '♠', value: 's', color: 'black' },
@@ -515,66 +444,43 @@
             { symbol: '♣', value: 'c', color: 'black' }
         ];
         
-        async function initializePyodide() {
-            if (isInitialized) return;
+        // Initialize Python environment
+        async function initPython() {
+            if (isReady) return;
             
-            showStatus('🐍 Loading Python environment...', 'loading-status');
+            showStatus('Loading Python environment... (first time takes 15-20 seconds)', 'loading');
             
             try {
                 pyodide = await loadPyodide();
+                console.log('Pyodide loaded');
+                
                 await pyodide.loadPackage(['numpy']);
+                console.log('NumPy loaded');
                 
-                showStatus('📁 Loading your Python modules...', 'loading-status');
+                showStatus('Loading your poker modules...', 'loading');
                 
-                // Try to load your Python files
-                try {
-                    const cardsetResponse = await fetch('./python/Cardset.py');
-                    const cardsetCode = await cardsetResponse.text();
-                    pyodide.runPython(cardsetCode);
-                    console.log('✅ Loaded Cardset.py');
-                } catch (e) {
-                    console.log('⚠️ Could not load Cardset.py:', e.message);
-                }
+                // Load your Python files
+                const files = ['Cardset.py', 'player.py', 'temp_player.py', 'evaluator.py', 'monte_carlo.py'];
                 
-                try {
-                    const playerResponse = await fetch('./python/player.py');
-                    const playerCode = await playerResponse.text();
-                    pyodide.runPython(playerCode);
-                    console.log('✅ Loaded player.py');
-                } catch (e) {
-                    console.log('⚠️ Could not load player.py:', e.message);
-                }
-                
-                try {
-                    const tempPlayerResponse = await fetch('./python/temp_player.py');
-                    const tempPlayerCode = await tempPlayerResponse.text();
-                    pyodide.runPython(tempPlayerCode);
-                    console.log('✅ Loaded temp_player.py');
-                } catch (e) {
-                    console.log('⚠️ Could not load temp_player.py:', e.message);
-                }
-                
-                try {
-                    const evaluatorResponse = await fetch('./python/evaluator.py');
-                    const evaluatorCode = await evaluatorResponse.text();
-                    pyodide.runPython(evaluatorCode);
-                    console.log('✅ Loaded evaluator.py');
-                } catch (e) {
-                    console.log('⚠️ Could not load evaluator.py:', e.message);
-                }
-                
-                try {
-                    const monteCarloResponse = await fetch('./python/monte_carlo.py');
-                    const monteCarloCode = await monteCarloResponse.text();
-                    pyodide.runPython(monteCarloCode);
-                    console.log('✅ Loaded monte_carlo.py');
-                } catch (e) {
-                    console.log('⚠️ Could not load monte_carlo.py:', e.message);
+                for (const file of files) {
+                    try {
+                        const response = await fetch(`python/${file}`);
+                        if (response.ok) {
+                            const code = await response.text();
+                            pyodide.runPython(code);
+                            console.log(`✅ Loaded ${file}`);
+                        } else {
+                            console.log(`⚠️ Could not fetch ${file}`);
+                        }
+                    } catch (error) {
+                        console.log(`⚠️ Error loading ${file}:`, error.message);
+                    }
                 }
                 
                 // Add wrapper function
                 pyodide.runPython(`
-def calculate_web_equity(p1_cards, p2_cards, community_cards=[], sims=50000):
+def web_calculate_equity(p1_cards, p2_cards, community_cards=[], sims=50000):
+    """Wrapper function for web interface"""
     try:
         import monte_carlo as mc
         from Cardset import Cardset
@@ -603,85 +509,85 @@ def calculate_web_equity(p1_cards, p2_cards, community_cards=[], sims=50000):
         return {'error': str(e)}
                 `);
                 
-                isInitialized = true;
+                isReady = true;
                 showStatus('✅ Ready! Click cards to select them.', 'success');
                 
             } catch (error) {
-                showStatus('❌ Failed to load: ' + error.message, 'error');
-                console.error('Error:', error);
+                showStatus('❌ Failed to load Python: ' + error.message, 'error');
+                console.error('Initialization error:', error);
             }
         }
         
-        function openCardSelector(cardElement) {
-            currentCardElement = cardElement;
-            generateCardOptions();
+        // Card selector functions
+        function openSelector(cardElement) {
+            currentCard = cardElement;
+            generateCardGrid();
             
-            const removeBtn = document.getElementById('removeBtn');
-            const hasCard = !cardElement.classList.contains('empty');
-            removeBtn.style.display = hasCard ? 'block' : 'none';
+            const hasCard = cardElement.dataset.card;
+            document.getElementById('removeBtn').style.display = hasCard ? 'block' : 'none';
             
-            document.getElementById('cardModal').classList.add('show');
+            document.getElementById('modal').classList.add('show');
         }
         
-        function closeCardSelector() {
-            document.getElementById('cardModal').classList.remove('show');
-            currentCardElement = null;
+        function closeSelector() {
+            document.getElementById('modal').classList.remove('show');
+            currentCard = null;
         }
         
-        function generateCardOptions() {
-            const cardGrid = document.getElementById('cardGrid');
-            cardGrid.innerHTML = '';
+        function generateCardGrid() {
+            const grid = document.getElementById('cardGrid');
+            grid.innerHTML = '';
             
             const usedCards = getUsedCards();
             
             ranks.forEach(rank => {
                 suits.forEach(suit => {
-                    const card = rank + suit.value;
-                    const isUsed = usedCards.includes(card);
+                    const cardCode = rank + suit.value;
+                    const isUsed = usedCards.includes(cardCode);
                     
-                    const cardDiv = document.createElement('div');
-                    cardDiv.className = `card-option ${suit.color}${isUsed ? ' disabled' : ''}`;
-                    cardDiv.innerHTML = `<div><strong>${rank}</strong></div><div>${suit.symbol}</div>`;
+                    const div = document.createElement('div');
+                    div.className = `card-option ${suit.color}${isUsed ? ' disabled' : ''}`;
+                    div.innerHTML = `<div><strong>${rank}</strong></div><div>${suit.symbol}</div>`;
                     
                     if (!isUsed) {
-                        cardDiv.onclick = () => selectCard(card);
+                        div.onclick = () => selectCard(cardCode);
                     }
                     
-                    cardGrid.appendChild(cardDiv);
+                    grid.appendChild(div);
                 });
             });
         }
         
-        function selectCard(card) {
-            if (currentCardElement) {
-                const rank = card[0];
-                const suit = card[1];
-                const suitInfo = suits.find(s => s.value === suit);
+        function selectCard(cardCode) {
+            if (currentCard) {
+                const rank = cardCode[0];
+                const suitCode = cardCode[1];
+                const suit = suits.find(s => s.value === suitCode);
                 
-                currentCardElement.innerHTML = `
-                    <div class="rank ${suitInfo.color}">${rank}</div>
-                    <div class="suit ${suitInfo.color}">${suitInfo.symbol}</div>
+                currentCard.innerHTML = `
+                    <div class="${suit.color}" style="font-weight: bold;">${rank}</div>
+                    <div class="${suit.color}">${suit.symbol}</div>
                 `;
-                currentCardElement.classList.remove('empty');
-                currentCardElement.dataset.card = card;
+                currentCard.classList.add('filled');
+                currentCard.dataset.card = cardCode;
             }
-            closeCardSelector();
+            closeSelector();
         }
         
         function removeCard() {
-            if (currentCardElement) {
-                currentCardElement.innerHTML = '<div class="rank">?</div>';
-                currentCardElement.classList.add('empty');
-                delete currentCardElement.dataset.card;
+            if (currentCard) {
+                currentCard.innerHTML = '<div>?</div>';
+                currentCard.classList.remove('filled');
+                delete currentCard.dataset.card;
             }
-            closeCardSelector();
+            closeSelector();
         }
         
         function getUsedCards() {
             const cards = [];
-            document.querySelectorAll('.card[data-card]').forEach(cardEl => {
-                if (cardEl.dataset.card) {
-                    cards.push(cardEl.dataset.card);
+            document.querySelectorAll('[data-card]').forEach(el => {
+                if (el.dataset.card) {
+                    cards.push(el.dataset.card);
                 }
             });
             return cards;
@@ -689,60 +595,60 @@ def calculate_web_equity(p1_cards, p2_cards, community_cards=[], sims=50000):
         
         function getPlayerCards(player) {
             const cards = [];
-            document.querySelectorAll(`[data-player="${player}"]`).forEach(cardEl => {
-                if (cardEl.dataset.card) {
-                    cards.push(cardEl.dataset.card);
+            document.querySelectorAll(`[data-player="${player}"]`).forEach(el => {
+                if (el.dataset.card) {
+                    cards.push(el.dataset.card);
                 }
             });
             return cards;
         }
         
-        async function calculateEquity() {
-            if (isCalculating) return;
-            if (!isInitialized) await initializePyodide();
+        // Main calculation
+        async function calculate() {
+            if (!isReady) await initPython();
+            if (!isReady) return;
             
-            isCalculating = true;
-            const btn = document.getElementById('calculateBtn');
+            const btn = document.getElementById('calcBtn');
             btn.textContent = 'Calculating...';
-            btn.classList.add('loading');
+            btn.disabled = true;
             
             try {
                 const p1Cards = getPlayerCards('1');
                 const p2Cards = getPlayerCards('2');
                 const communityCards = getPlayerCards('community');
-                const simulations = parseInt(document.getElementById('simulations').value);
+                const sims = parseInt(document.getElementById('simulations').value);
                 
                 if (p1Cards.length !== 3 || p2Cards.length !== 3) {
                     throw new Error('Both players need exactly 3 cards');
                 }
                 
-                showStatus(`🎲 Running ${simulations.toLocaleString()} simulations...`, 'loading-status');
+                showStatus(`Running ${sims.toLocaleString()} simulations...`, 'loading');
                 
+                // Call Python function
                 pyodide.globals.set("p1_cards", p1Cards);
                 pyodide.globals.set("p2_cards", p2Cards);
                 pyodide.globals.set("community_cards", communityCards);
-                pyodide.globals.set("num_sims", simulations);
+                pyodide.globals.set("num_sims", sims);
                 
-                const results = pyodide.runPython('calculate_web_equity(p1_cards, p2_cards, community_cards, num_sims)');
+                const results = pyodide.runPython('web_calculate_equity(p1_cards, p2_cards, community_cards, num_sims)');
                 
                 if (results.error) {
                     throw new Error(results.error);
                 }
                 
-                displayResults(results, p1Cards, p2Cards);
+                showResults(results, p1Cards, p2Cards);
                 showStatus('✅ Calculation complete!', 'success');
                 
             } catch (error) {
                 showStatus('❌ Error: ' + error.message, 'error');
-                console.error('Error:', error);
+                console.error('Calculation error:', error);
             } finally {
-                isCalculating = false;
                 btn.textContent = 'Calculate Equity';
-                btn.classList.remove('loading');
+                btn.disabled = false;
             }
         }
         
-        function displayResults(results, p1Cards, p2Cards) {
+        function showResults(results, p1Cards, p2Cards) {
             const p1Pct = (results.player1_equity * 100).toFixed(1);
             const p2Pct = (results.player2_equity * 100).toFixed(1);
             const tiePct = (results.ties * 100).toFixed(1);
@@ -750,38 +656,38 @@ def calculate_web_equity(p1_cards, p2_cards, community_cards=[], sims=50000):
             document.getElementById('results').innerHTML = `
                 <div class="results">
                     <h3>📊 Equity Results</h3>
-                    <div class="equity-display">
+                    <div class="equity-row">
                         <div class="equity-item">
                             <h4>Player 1</h4>
-                            <div class="equity-value player1-equity">${p1Pct}%</div>
-                            <small>${p1Cards.join(' ')}</small>
+                            <div class="equity-value p1-equity">${p1Pct}%</div>
+                            <div style="font-size: 14px; color: #666;">${p1Cards.join(' ')}</div>
                         </div>
                         <div class="equity-item">
                             <h4>Player 2</h4>
-                            <div class="equity-value player2-equity">${p2Pct}%</div>
-                            <small>${p2Cards.join(' ')}</small>
+                            <div class="equity-value p2-equity">${p2Pct}%</div>
+                            <div style="font-size: 14px; color: #666;">${p2Cards.join(' ')}</div>
                         </div>
                         <div class="equity-item">
                             <h4>Ties</h4>
-                            <div class="equity-value ties-equity">${tiePct}%</div>
-                            <small>Split pot</small>
+                            <div class="equity-value tie-equity">${tiePct}%</div>
+                            <div style="font-size: 14px; color: #666;">Split pot</div>
                         </div>
                     </div>
                     <div style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
-                        Based on ${results.simulations.toLocaleString()} simulations
+                        Based on ${results.simulations.toLocaleString()} Monte Carlo simulations
                     </div>
                 </div>
             `;
         }
         
-        function showStatus(message, className = '') {
-            document.getElementById('status').innerHTML = `<div class="status ${className}">${message}</div>`;
+        function showStatus(message, type = '') {
+            document.getElementById('status').innerHTML = `<div class="status ${type}">${message}</div>`;
         }
         
         function clearAll() {
             document.querySelectorAll('.card').forEach(card => {
-                card.innerHTML = '<div class="rank">?</div>';
-                card.classList.add('empty');
+                card.innerHTML = '<div>?</div>';
+                card.classList.remove('filled');
                 delete card.dataset.card;
             });
             document.getElementById('results').innerHTML = '';
@@ -790,14 +696,15 @@ def calculate_web_equity(p1_cards, p2_cards, community_cards=[], sims=50000):
         
         // Initialize when page loads
         window.addEventListener('load', () => {
-            setTimeout(initializePyodide, 1000);
+            console.log('Page loaded, initializing Python...');
+            setTimeout(initPython, 1000);
         });
         
         // Close modal when clicking outside
         window.onclick = function(event) {
-            const modal = document.getElementById('cardModal');
+            const modal = document.getElementById('modal');
             if (event.target === modal) {
-                closeCardSelector();
+                closeSelector();
             }
         }
     </script>
