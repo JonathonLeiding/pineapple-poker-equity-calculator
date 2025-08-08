@@ -543,17 +543,4 @@ def eval_decoder_comparison(p1_string, p2_string, ret_string=False, ret_list=Fal
         return 0  # If their ranks are all the same, then return a chop (different suits)
 
 
-if __name__ == "__main__":
-    # print(kicker(["As", "5s", "7s", "9s", "2s"], 5))
-    deck = Cardset.Cardset()
-    player = player.Player()
-    player.set_cards(["Ts", "As"], deck)
-    deck.set_community_cards(["4s", "8s", "2h", "9h", "5s"])
-    a = eval_standard(player, deck)
-    b = straight_check(["9s", "8s", "7h", "Js", "Ts"])
-    c = "2AsAcQsQc4d"
-    d = "3AsAcAsTc3s"
-    print(a)
-    print(b)
-    print(eval_decoder_comparison(a, b))
-    print(eval_decoder_comparison(c, d, True))
+# Remove problematic main block - not needed for web deployment

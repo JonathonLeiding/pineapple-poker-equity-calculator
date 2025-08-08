@@ -5,7 +5,7 @@ from Cardset import Cardset
 import time as t
 
 
-def simulate_hand(player1, player2, deck, best_hand=False, num_cards = 0, set_board = []):
+def simulate_hand(player1, player2, deck, best_hand=False, num_cards=0, set_board=[]):
     """
     Simulates a hand for players with cards that remain the same
     :param set_board:
@@ -18,17 +18,22 @@ def simulate_hand(player1, player2, deck, best_hand=False, num_cards = 0, set_bo
     :return: Player1 Wins == 1       Player2 Wins == 2          Tie == 0
     """
     pin = False
-    if (num_cards==0):
+    if (num_cards == 0):
         deck.clear_all()
         deck.add_block(player1.cards)
         deck.add_block(player2.cards)
         deck.sim_full_comm()
-    elif(num_cards == 4):
+    elif (num_cards >= 1):  # Fixed: was checking == 4, but should handle any community cards
         deck.clear_all()
         deck.set_community_cards(set_board)
         deck.add_block(player1.cards)
         deck.add_block(player2.cards)
-        deck.sim_full_comm()
+        # Only simulate remaining cards if not a full board
+        if len(set_board) < 5:
+            remaining_cards = 5 - len(set_board)
+            for _ in range(remaining_cards):
+                deck.sim_river()
+
     if len(player1.cards) == 3:
         pin = True
 
@@ -65,7 +70,7 @@ def evaluate_hand(p1, deck, pineapple=False, best_hand=True):
         return ev.eval_standard(p1, deck)
 
 
-def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, num_cards = 0, set_board = []):
+def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, num_cards=0, set_board=[]):
     """
     Main function to estimate equity using Monte Carlo simulation
 
@@ -102,8 +107,8 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             i = 0
             if (num_cards == 0):
                 result = simulate_hand(player1, player2, deck, best_hand=True)
-            elif(num_cards == 4):
-                result = simulate_hand(player1, player2, deck, best_hand=True, num_cards=4, set_board=set_board)
+            elif (num_cards >= 1):  # Fixed: was checking == 4
+                result = simulate_hand(player1, player2, deck, best_hand=True, num_cards=num_cards, set_board=set_board)
             if result[0] == 1:
                 player1_wins += 1
                 for card_combo in p1_combo_list:
@@ -132,21 +137,25 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
         player1_equity = player1_wins / num_simulations
         player2_equity = player2_wins / num_simulations
         draw_equity = ties / num_simulations
-        p1_01_equity = p1_wins_01 / player1_wins
-        p1_02_equity = p1_wins_02 / player1_wins
-        p1_12_equity = p1_wins_12 / player1_wins
+        p1_01_equity = p1_wins_01 / player1_wins if player1_wins > 0 else 0
+        p1_02_equity = p1_wins_02 / player1_wins if player1_wins > 0 else 0
+        p1_12_equity = p1_wins_12 / player1_wins if player1_wins > 0 else 0
         p1_combo_tup = (p1_01_equity, p1_02_equity, p1_12_equity)
 
-        p2_01_equity = p2_wins_01 / player2_wins
-        p2_02_equity = p2_wins_02 / player2_wins
-        p2_12_equity = p2_wins_12 / player2_wins
+        p2_01_equity = p2_wins_01 / player2_wins if player2_wins > 0 else 0
+        p2_02_equity = p2_wins_02 / player2_wins if player2_wins > 0 else 0
+        p2_12_equity = p2_wins_12 / player2_wins if player2_wins > 0 else 0
         p2_combo_tup = (p2_01_equity, p2_02_equity, p2_12_equity)
 
         return [player1_equity, player2_equity, draw_equity, p1_combo_list, p1_combo_tup, p2_combo_list, p2_combo_tup]
 
     else:
         for _ in range(num_simulations):
-            result = simulate_hand(player1, player2, deck)
+            if num_cards == 0:
+                result = simulate_hand(player1, player2, deck)
+            else:
+                result = simulate_hand(player1, player2, deck, num_cards=num_cards, set_board=set_board)
+
             if result == 1:
                 player1_wins += 1
             elif result == 2:
@@ -160,38 +169,4 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
 
         return [player1_equity, player2_equity, draw_equity]
 
-
-if __name__ == "__main__":
-    # Example usage
-    best_hand = True
-    deck = Cardset()
-    hero = Player()
-    villain = Player()
-    # hero.set_cards(["9c", "8c", "5d"], deck)
-    #
-    # villain.set_cards(["As", "5s", "5h"], deck)
-    # start = t.time()
-    # equity_list = estimate_equity(hero, villain, deck, 100000, best_hand=best_hand)
-    # end = t.time()
-    # if best_hand:
-    #     print("Hero Cards    : {a}\nVillain Cards : {b}".format(a=hero.cards, b=villain.cards))
-    #     print("\nHero's Equity = {a} \t Villain's Equity = {b} \t      Draw Equity = {c}\n\nHero Cards       =    {d} \nHero "
-    #           "Hand Breakdown    = {e:.5f},\t    {h:.5f},     \t{i:.5f}\n\nVillain Cards    =    {f}\n"
-    #           "Villain Hand Breakdown = {g:.5f},\t    {j:.5f},     \t{k:.5f}\n".format(a=equity_list[0], b=equity_list[1],
-    #                                                                   c=equity_list[2],
-    #                                                                   d=equity_list[3], e=equity_list[4][0],
-    #                                                                   f=equity_list[5],
-    #                                                                   g=equity_list[6][0], h=equity_list[4][1],
-    #                                                                   i=equity_list[4][2], j=equity_list[6][1],
-    #                                                                   k=equity_list[6][2]))
-    # else:
-    #     print("\nHero's Equity = {a} \t Villain's Equity = {b} \t Draw Equity = {c})".format(a=equity_list[0],
-    #                                                                                          b=equity_list[1],
-    #                                                                                          c=equity_list[2]))
-    # print("{:.3f} seconds to make that calculation".format(end - start))
-    hero.set_cards(["Kc", "3s", "6h"],deck)
-    villain.set_cards(["As", "Ah", "Th"], deck)
-    # four = ["Kc", "Qh", "4c", "3d"]
-    # deck.set_community_cards(four)
-    equity_list = estimate_equity(hero, villain, deck, 100000, best_hand=False)
-    print(equity_list)
+# Remove problematic main block completely - not needed for web deployment
