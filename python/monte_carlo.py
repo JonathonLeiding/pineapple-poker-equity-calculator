@@ -189,8 +189,8 @@ if __name__ == "__main__":
     #                                                                                          b=equity_list[1],
     #                                                                                          c=equity_list[2]))
     # print("{:.3f} seconds to make that calculation".format(end - start))
-    hero.set_cards(["Qh", "Qs"],deck)
-    villain.set_cards(["Ac", "Ad"], deck)
+    hero.set_cards(["Kc", "3s", "6h"],deck)
+    villain.set_cards(["As", "Ah", "Th"], deck)
     # four = ["Kc", "Qh", "4c", "3d"]
     # deck.set_community_cards(four)
     equity_list = estimate_equity(hero, villain, deck, 100000, best_hand=False)
