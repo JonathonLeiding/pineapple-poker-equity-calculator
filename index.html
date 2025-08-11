@@ -723,25 +723,6 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
 `;
 
         // ============================================================================
-        // JAVASCRIPT CODE
-        // ============================================================================
-        
-        // Global variables
-        let pyodide = null;
-        let isReady = false;
-        let currentCard = null;
-        let debugMode = true;
-        
-        // Card definitions
-        const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
-        const suits = [
-            { symbol: '♠', value: 's', color: 'black' },
-            { symbol: '♥', value: 'h', color: 'red' },
-            { symbol: '♦', value: 'd', color: 'red' },
-            { symbol: '♣', value: 'c', color: 'black' }
-        ];
-        
-        // ============================================================================
         // ENHANCED DEBUG SYSTEM
         // ============================================================================
         
@@ -772,12 +753,10 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             }
             
             // Update status area (keep original behavior)
-            if (debugMode) {
-                const status = document.getElementById('status');
-                const currentContent = status.innerHTML;
-                const className = isError ? 'error' : 'debug';
-                status.innerHTML = currentContent + `<div class="status ${className}">[${timestamp}] ${message}</div>`;
-            }
+            const status = document.getElementById('status');
+            const currentContent = status.innerHTML;
+            const className = isError ? 'error' : 'debug';
+            status.innerHTML = currentContent + `<div class="status ${className}">[${timestamp}] ${message}</div>`;
         }
         
         function toggleDebugConsole() {
@@ -813,7 +792,7 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             }
             
             output.innerHTML = html;
-            output.scrollTop = output.scrollHeight; // Auto-scroll to bottom
+            output.scrollTop = output.scrollHeight;
         }
         
         function clearDebugLog() {
@@ -830,7 +809,6 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             navigator.clipboard.writeText(logText).then(() => {
                 alert('Debug log copied to clipboard!');
             }).catch(() => {
-                // Fallback for older browsers
                 const textArea = document.createElement('textarea');
                 textArea.value = logText;
                 document.body.appendChild(textArea);
@@ -841,12 +819,9 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             });
         }
         
-        // Capture Python errors and console output
         function capturePythonError(pythonCode, operation) {
             try {
                 debugLog(`🐍 Executing Python: ${operation}`);
-                debugLog(`📄 Python Code:\n${pythonCode.substring(0, 200)}${pythonCode.length > 200 ? '...' : ''}`);
-                
                 const result = pyodide.runPython(pythonCode);
                 debugLog(`✅ Python Result: ${result}`);
                 return result;
@@ -855,22 +830,25 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
                 debugLog(`Error Type: ${error.constructor.name}`, true);
                 debugLog(`Error Message: ${error.message}`, true);
                 debugLog(`Error Stack: ${error.stack}`, true);
-                
-                // Try to get Python traceback
-                try {
-                    const traceback = pyodide.runPython(`
-import traceback
-import sys
-traceback.format_exc()
-                    `);
-                    debugLog(`Python Traceback: ${traceback}`, true);
-                } catch (tbError) {
-                    debugLog(`Could not get Python traceback: ${tbError.message}`, true);
-                }
-                
                 throw error;
             }
         }
+
+        // ============================================================================
+        // JAVASCRIPT CODE
+        // ============================================================================
+        
+        let pyodide = null;
+        let isReady = false;
+        let currentCard = null;
+        
+        const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
+        const suits = [
+            { symbol: '♠', value: 's', color: 'black' },
+            { symbol: '♥', value: 'h', color: 'red' },
+            { symbol: '♦', value: 'd', color: 'red' },
+            { symbol: '♣', value: 'c', color: 'black' }
+        ];
         
         async function testPython() {
             if (!pyodide) {
@@ -890,8 +868,6 @@ try:
     from player import Player
     import monte_carlo as mc
     result = "All imports successful!"
-except ImportError as e:
-    result = f"Import error: {str(e)}"
 except Exception as e:
     import traceback
     result = f"Other error: {str(e)}\\nTraceback:\\n{traceback.format_exc()}"
@@ -923,127 +899,121 @@ result
         async function initPython() {
             if (isReady) return;
             
+            debugLog('🚀 Starting Python initialization process');
+            
             try {
                 showStatus('🔄 Loading Pyodide...', 'loading');
-                debugLog('Starting Pyodide initialization...');
+                debugLog('⬇️ Loading Pyodide from CDN...');
                 
                 pyodide = await loadPyodide();
                 debugLog('✅ Pyodide loaded successfully');
                 
                 showStatus('🔄 Loading NumPy...', 'loading');
+                debugLog('⬇️ Loading NumPy package...');
                 await pyodide.loadPackage(['numpy']);
                 debugLog('✅ NumPy loaded successfully');
                 
                 showStatus('🔄 Loading Python modules...', 'loading');
+                debugLog('📦 Starting module loading sequence...');
                 
-                // More robust module loading with explicit error checking
-                try {
-                    debugLog('Loading Cardset module...');
-                    const cardsetResult = pyodide.runPython(cardsetPython + '\n"Cardset loaded"');
-                    debugLog(`Cardset result: ${cardsetResult}`);
-                    if (!cardsetResult || cardsetResult !== "Cardset loaded") {
-                        throw new Error("Cardset module failed to load properly");
-                    }
-                } catch (error) {
-                    debugLog(`❌ Cardset loading failed: ${error.message}`, true);
-                    throw new Error(`Failed to load Cardset: ${error.message}`);
+                // Test basic Python functionality first
+                debugLog('🧪 Testing basic Python execution...');
+                const basicTest = capturePythonError('2 + 3', 'Basic Math Test');
+                debugLog(`✅ Basic Python test result: ${basicTest}`);
+                
+                // Load modules one by one
+                debugLog('📝 Loading Cardset module...');
+                const cardsetResult = capturePythonError(cardsetPython + '\n"Cardset loaded"', 'Cardset Module Loading');
+                debugLog(`📝 Cardset load result: ${cardsetResult}`);
+                
+                debugLog('👤 Loading Player module...');
+                const playerResult = capturePythonError(playerPython + '\n"Player loaded"', 'Player Module Loading');
+                debugLog(`👤 Player load result: ${playerResult}`);
+                
+                debugLog('👥 Loading TempPlayer module...');
+                const tempPlayerResult = capturePythonError(tempPlayerPython + '\n"TempPlayer loaded"', 'TempPlayer Module Loading');
+                debugLog(`👥 TempPlayer load result: ${tempPlayerResult}`);
+                
+                debugLog('🧮 Loading Evaluator module...');
+                const evaluatorResult = capturePythonError(evaluatorPython + '\n"Evaluator loaded"', 'Evaluator Module Loading');
+                debugLog(`🧮 Evaluator load result: ${evaluatorResult}`);
+                
+                debugLog('🎲 Loading Monte Carlo module...');
+                const monteCarloResult = capturePythonError(monteCarloPython + '\n"MonteCarlo loaded"', 'Monte Carlo Module Loading');
+                debugLog(`🎲 Monte Carlo load result: ${monteCarloResult}`);
+                
+                // Test imports with simplified, focused approach
+                debugLog('🔗 Testing module imports with simplified test...');
+                
+                // First, test basic imports
+                const basicImportTest = capturePythonError(`
+from Cardset import Cardset
+from player import Player
+"BASIC_IMPORTS_OK"
+                `, 'Basic Imports Test');
+                debugLog(`🔗 Basic imports result: ${basicImportTest}`);
+                
+                if (!basicImportTest || basicImportTest !== "BASIC_IMPORTS_OK") {
+                    throw new Error(`Basic imports failed. Got: ${basicImportTest}`);
                 }
                 
-                try {
-                    debugLog('Loading Player module...');
-                    const playerResult = pyodide.runPython(playerPython + '\n"Player loaded"');
-                    debugLog(`Player result: ${playerResult}`);
-                    if (!playerResult || playerResult !== "Player loaded") {
-                        throw new Error("Player module failed to load properly");
-                    }
-                } catch (error) {
-                    debugLog(`❌ Player loading failed: ${error.message}`, true);
-                    throw new Error(`Failed to load Player: ${error.message}`);
+                // Test monte carlo import separately
+                const mcImportTest = capturePythonError(`
+import monte_carlo as mc
+import evaluator as ev
+"MC_IMPORTS_OK"
+                `, 'Monte Carlo Imports Test');
+                debugLog(`🔗 MC imports result: ${mcImportTest}`);
+                
+                if (!mcImportTest || mcImportTest !== "MC_IMPORTS_OK") {
+                    throw new Error(`Monte Carlo imports failed. Got: ${mcImportTest}`);
                 }
                 
-                try {
-                    debugLog('Loading TempPlayer module...');
-                    const tempPlayerResult = pyodide.runPython(tempPlayerPython + '\n"TempPlayer loaded"');
-                    debugLog(`TempPlayer result: ${tempPlayerResult}`);
-                    if (!tempPlayerResult || tempPlayerResult !== "TempPlayer loaded") {
-                        throw new Error("TempPlayer module failed to load properly");
-                    }
-                } catch (error) {
-                    debugLog(`❌ TempPlayer loading failed: ${error.message}`, true);
-                    throw new Error(`Failed to load TempPlayer: ${error.message}`);
+                // Test object creation
+                const objectTest = capturePythonError(`
+deck = Cardset()
+p1 = Player()
+p2 = Player()
+"OBJECTS_CREATED"
+                `, 'Object Creation Test');
+                debugLog(`🔗 Object creation result: ${objectTest}`);
+                
+                if (!objectTest || objectTest !== "OBJECTS_CREATED") {
+                    throw new Error(`Object creation failed. Got: ${objectTest}`);
                 }
                 
-                try {
-                    debugLog('Loading Evaluator module...');
-                    const evaluatorResult = pyodide.runPython(evaluatorPython + '\n"Evaluator loaded"');
-                    debugLog(`Evaluator result: ${evaluatorResult}`);
-                    if (!evaluatorResult || evaluatorResult !== "Evaluator loaded") {
-                        throw new Error("Evaluator module failed to load properly");
-                    }
-                } catch (error) {
-                    debugLog(`❌ Evaluator loading failed: ${error.message}`, true);
-                    throw new Error(`Failed to load Evaluator: ${error.message}`);
+                // Final integration test
+                const integrationTest = capturePythonError(`
+# Test that we can actually use the objects
+deck = Cardset()
+len(deck.deck)
+                `, 'Integration Test');
+                debugLog(`🔗 Integration test result: ${integrationTest}`);
+                
+                if (integrationTest !== 52) {
+                    throw new Error(`Integration test failed. Expected 52 cards, got: ${integrationTest}`);
                 }
                 
-                try {
-                    debugLog('Loading Monte Carlo module...');
-                    const monteCarloResult = pyodide.runPython(monteCarloPython + '\n"MonteCarlo loaded"');
-                    debugLog(`MonteCarlo result: ${monteCarloResult}`);
-                    if (!monteCarloResult || monteCarloResult !== "MonteCarlo loaded") {
-                        throw new Error("MonteCarlo module failed to load properly");
-                    }
-                } catch (error) {
-                    debugLog(`❌ MonteCarlo loading failed: ${error.message}`, true);
-                    throw new Error(`Failed to load MonteCarlo: ${error.message}`);
-                }
-                
-                // Test the imports with better error handling
-                debugLog('Testing module imports...');
-                const testImports = pyodide.runPython(`
-try:
-    from Cardset import Cardset
-    from player import Player
-    import monte_carlo as mc
-    import evaluator as ev
-    
-    # Test basic functionality
-    deck = Cardset()
-    p1 = Player()
-    p2 = Player()
-    
-    "SUCCESS: All modules loaded and tested"
-except Exception as e:
-    import traceback
-    f"ERROR: {str(e)}\\nTraceback:\\n{traceback.format_exc()}"
-                `);
-                
-                debugLog(`Import test result: ${testImports}`);
-                
-                // Robust check for test results
-                if (!testImports || typeof testImports !== 'string') {
-                    throw new Error("Import test returned invalid result (undefined or not a string)");
-                }
-                
-                if (testImports.startsWith('ERROR')) {
-                    throw new Error(`Import test failed: ${testImports}`);
-                }
-                
-                if (!testImports.includes('SUCCESS')) {
-                    throw new Error(`Import test didn't return success: ${testImports}`);
-                }
-                
-                debugLog('✅ All modules tested successfully');
+                debugLog('✅ All simplified tests passed');
+                debugLog('✅ All validation checks passed');
+                debugLog('🎉 Python environment fully initialized');
                 isReady = true;
                 showStatus('✅ Ready! Click cards to select them.', 'success');
                 
             } catch (error) {
-                debugLog(`❌ Initialization failed: ${error.message}`, true);
+                debugLog(`💥 INITIALIZATION FAILED`, true);
+                debugLog(`Error in initPython: ${error.message}`, true);
+                debugLog(`Error type: ${error.constructor.name}`, true);
+                debugLog(`Error stack: ${error.stack}`, true);
+                
                 showStatus('❌ Failed to load Python: ' + error.message, 'error');
                 console.error('Initialization error:', error);
                 
                 // Reset state on failure
                 isReady = false;
                 pyodide = null;
+                
+                debugLog('🔄 State reset due to failure', true);
             }
         }
         
