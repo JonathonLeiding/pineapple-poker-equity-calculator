@@ -635,8 +635,8 @@ def kicker(fin_list, num_kickers, ret_list=False):
         return "".join(sorted_cards[:num_kickers])
 
 def rank_value(rank):
-    values = {"A": 14, "K": 13, "Q": 12, "J": 11, "T": 10}
-    return values.get(rank, int(rank))
+    values = {"A": 14, "K": 13, "Q": 12, "J": 11, "T": 10, "9": 9, "8": 8, "7": 7, "6": 6, "5": 5, "4": 4, "3": 3, "2": 2}
+    return values[rank]  # Direct lookup - we know all ranks are valid
 
 def eval_decoder_comparison(p1_string, p2_string, ret_string=False):
     if p1_string == p2_string:
