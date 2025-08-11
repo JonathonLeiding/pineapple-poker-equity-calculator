@@ -864,13 +864,16 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
                 debugLog('Testing imports...');
                 const importTest = pyodide.runPython(`
 try:
-    from Cardset import Cardset
-    from player import Player
-    import monte_carlo as mc
-    result = "All imports successful!"
+    # Test that classes exist in global namespace (no imports needed)
+    Cardset
+    Player
+    TempPlayer
+    evaluator_pineapple
+    estimate_equity
+    result = "All classes and functions accessible!"
 except Exception as e:
     import traceback
-    result = f"Other error: {str(e)}\\nTraceback:\\n{traceback.format_exc()}"
+    result = f"Error accessing classes: {str(e)}\\nTraceback:\\n{traceback.format_exc()}"
 result
                 `);
                 debugLog(`Import test result: ${importTest}`);
@@ -942,34 +945,24 @@ result
                 const monteCarloResult = capturePythonError(monteCarloPython + '\n"MonteCarlo loaded"', 'Monte Carlo Module Loading');
                 debugLog(`🎲 Monte Carlo load result: ${monteCarloResult}`);
                 
-                // Test imports with simplified, focused approach
-                debugLog('🔗 Testing module imports with simplified test...');
+                // Test imports with corrected approach - no module imports needed!
+                debugLog('🔗 Testing Python classes (no module imports needed)...');
                 
-                // First, test basic imports
-                const basicImportTest = capturePythonError(`
-from Cardset import Cardset
-from player import Player
-"BASIC_IMPORTS_OK"
-                `, 'Basic Imports Test');
-                debugLog(`🔗 Basic imports result: ${basicImportTest}`);
+                // Test that classes exist in global namespace
+                const classTest = capturePythonError(`
+# Test that classes exist in global namespace
+Cardset
+Player  
+TempPlayer
+"CLASSES_EXIST"
+                `, 'Class Existence Test');
+                debugLog(`🔗 Class test result: ${classTest}`);
                 
-                if (!basicImportTest || basicImportTest !== "BASIC_IMPORTS_OK") {
-                    throw new Error(`Basic imports failed. Got: ${basicImportTest}`);
+                if (!classTest || classTest !== "CLASSES_EXIST") {
+                    throw new Error(`Classes don't exist in global namespace. Got: ${classTest}`);
                 }
                 
-                // Test monte carlo import separately
-                const mcImportTest = capturePythonError(`
-import monte_carlo as mc
-import evaluator as ev
-"MC_IMPORTS_OK"
-                `, 'Monte Carlo Imports Test');
-                debugLog(`🔗 MC imports result: ${mcImportTest}`);
-                
-                if (!mcImportTest || mcImportTest !== "MC_IMPORTS_OK") {
-                    throw new Error(`Monte Carlo imports failed. Got: ${mcImportTest}`);
-                }
-                
-                // Test object creation
+                // Test object creation directly (no imports needed)
                 const objectTest = capturePythonError(`
 deck = Cardset()
 p1 = Player()
@@ -982,16 +975,42 @@ p2 = Player()
                     throw new Error(`Object creation failed. Got: ${objectTest}`);
                 }
                 
-                // Final integration test
-                const integrationTest = capturePythonError(`
-# Test that we can actually use the objects
+                // Test basic functionality
+                const functionalityTest = capturePythonError(`
 deck = Cardset()
 len(deck.deck)
-                `, 'Integration Test');
-                debugLog(`🔗 Integration test result: ${integrationTest}`);
+                `, 'Functionality Test');
+                debugLog(`🔗 Functionality test result: ${functionalityTest}`);
                 
-                if (integrationTest !== 52) {
-                    throw new Error(`Integration test failed. Expected 52 cards, got: ${integrationTest}`);
+                if (functionalityTest !== 52) {
+                    throw new Error(`Functionality test failed. Expected 52 cards, got: ${functionalityTest}`);
+                }
+                
+                // Test evaluator functions exist
+                const evaluatorTest = capturePythonError(`
+# Test that evaluator functions exist
+evaluator_pineapple
+eval_standard
+eval_decoder_comparison
+"EVALUATOR_FUNCTIONS_EXIST"
+                `, 'Evaluator Functions Test');
+                debugLog(`🔗 Evaluator functions test result: ${evaluatorTest}`);
+                
+                if (!evaluatorTest || evaluatorTest !== "EVALUATOR_FUNCTIONS_EXIST") {
+                    throw new Error(`Evaluator functions don't exist. Got: ${evaluatorTest}`);
+                }
+                
+                // Test monte carlo functions exist
+                const monteCarloTest = capturePythonError(`
+# Test that monte carlo functions exist
+simulate_hand
+estimate_equity
+"MONTE_CARLO_FUNCTIONS_EXIST"
+                `, 'Monte Carlo Functions Test');
+                debugLog(`🔗 Monte Carlo functions test result: ${monteCarloTest}`);
+                
+                if (!monteCarloTest || monteCarloTest !== "MONTE_CARLO_FUNCTIONS_EXIST") {
+                    throw new Error(`Monte Carlo functions don't exist. Got: ${monteCarloTest}`);
                 }
                 
                 debugLog('✅ All simplified tests passed');
@@ -1047,10 +1066,7 @@ len(deck.deck)
                 
                 const pythonCode = `
 try:
-    from Cardset import Cardset
-    from player import Player
-    import monte_carlo as mc
-    
+    # No imports needed - classes and functions are in global namespace
     deck = Cardset()
     hero = Player()
     villain = Player()
@@ -1066,13 +1082,13 @@ try:
         deck.set_community_cards(community_cards)
     
     if len(community_cards) > 0:
-        equity_results = mc.estimate_equity(
+        equity_results = estimate_equity(
             hero, villain, deck, ${sims}, 
             num_cards=len(community_cards), 
             set_board=community_cards
         )
     else:
-        equity_results = mc.estimate_equity(hero, villain, deck, ${sims})
+        equity_results = estimate_equity(hero, villain, deck, ${sims})
     
     result = {
         'success': True,
