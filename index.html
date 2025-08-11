@@ -1265,16 +1265,26 @@ equity_results = estimate_equity(hero, villain, deck, 1000)
                     // If we get here, the issue is likely with high simulation counts
                     debugLog(`✅ All steps passed! Issue might be with ${sims} simulations being too high.`);
                     
-                    // Use the medium simulation result
-                    let jsResults = step6.toJs ? step6.toJs() : step6;
-                    jsResults.simulations = 1000; // Actual sim count
-                    jsResults.success = true;
-                    jsResults.player1_cards = p1Cards;
-                    jsResults.player2_cards = p2Cards;
-                    jsResults.community_cards = communityCards;
+                    // Use the medium simulation result (1000 simulations)
+                    debugLog(`✅ All steps passed! Using 1000 simulation results.`);
                     
+                    let jsResults = step6.toJs ? step6.toJs() : step6;
+                    
+                    // Ensure proper format
+                    jsResults = {
+                        success: true,
+                        player1_equity: jsResults.player1_equity,
+                        player2_equity: jsResults.player2_equity,
+                        ties: jsResults.ties,
+                        simulations: 1000,
+                        player1_cards: p1Cards,
+                        player2_cards: p2Cards,
+                        community_cards: communityCards
+                    };
+                    
+                    debugLog(`📊 Final results: ${JSON.stringify(jsResults)}`);
                     showResults(jsResults);
-                    showStatus('✅ Calculation complete! (Used 1000 simulations due to performance)', 'success');
+                    showStatus('✅ Calculation complete!', 'success');
                     
                 } catch (stepError) {
                     debugLog(`❌ Step-by-step debugging failed: ${stepError.message}`, true);
