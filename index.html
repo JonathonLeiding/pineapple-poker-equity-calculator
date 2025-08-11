@@ -624,15 +624,31 @@ def eval_standard(player, deck):
     return "0" + "".join(kicker(full, 5, ret_list=True))
 
 def kicker(fin_list, num_kickers, ret_list=False):
+    """
+    Sorts list into rank order - FIXED to match original logic
+    """
     if len(fin_list) == 0:
         return [] if ret_list else ""
     
-    sorted_cards = sorted(fin_list, key=lambda x: rank_value(x[0]), reverse=True)
+    # Use the same rank mapping as your original code
+    rank_dict = {"A": 13, "K": 12, "Q": 11, "J": 10, "T": 9, "9": 8, "8": 7, "7": 6, "6": 5, "5": 4, "4": 3, "3": 2, "2": 1}
+    
+    # Create dictionary mapping each card to its rank value
+    list_dict = {}
+    for elt in fin_list:
+        if isinstance(elt, str) and len(elt) >= 2:
+            list_dict[elt] = rank_dict.get(elt[0], 1)  # Use rank (first char) to get value
+        else:
+            # Handle unexpected data
+            raise ValueError(f"kicker() got invalid card format: {elt} (type: {type(elt)})")
+    
+    # Sort by rank value (highest first)
+    sorted_dict = sorted(list_dict.items(), key=lambda x: x[1], reverse=True)
     
     if ret_list:
-        return sorted_cards[:num_kickers]
+        return [sorted_dict[i][0] for i in range(min(num_kickers, len(sorted_dict)))]
     else:
-        return "".join(sorted_cards[:num_kickers])
+        return "".join([sorted_dict[i][0] for i in range(min(num_kickers, len(sorted_dict)))])
 
 def rank_value(rank):
     # Debug: Check what we're actually getting
