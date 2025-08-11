@@ -1064,9 +1064,11 @@ estimate_equity
                 
                 showStatus(`🔄 Running ${sims.toLocaleString()} simulations...`, 'loading');
                 
+                debugLog('🔄 Starting calculation with detailed error tracking...');
+                
                 const pythonCode = `
 try:
-    # No imports needed - classes and functions are in global namespace
+    # Create objects
     deck = Cardset()
     hero = Player()
     villain = Player()
@@ -1075,12 +1077,15 @@ try:
     p2_cards = [${p2Cards.map(c => `"${c}"`).join(', ')}]
     community_cards = [${communityCards.map(c => `"${c}"`).join(', ')}]
     
+    # Set player cards
     hero.set_cards(p1_cards, deck)
     villain.set_cards(p2_cards, deck)
     
+    # Set community cards if any
     if len(community_cards) > 0:
         deck.set_community_cards(community_cards)
     
+    # Calculate equity
     if len(community_cards) > 0:
         equity_results = estimate_equity(
             hero, villain, deck, ${sims}, 
@@ -1090,7 +1095,8 @@ try:
     else:
         equity_results = estimate_equity(hero, villain, deck, ${sims})
     
-    result = {
+    # Return results
+    {
         'success': True,
         'player1_equity': float(equity_results[0]),
         'player2_equity': float(equity_results[1]), 
@@ -1103,20 +1109,40 @@ try:
 
 except Exception as e:
     import traceback
-    result = {
+    {
         'success': False,
         'error': str(e),
+        'error_type': type(e).__name__,
         'traceback': traceback.format_exc()
     }
-
-result
                 `;
                 
-                const results = pyodide.runPython(pythonCode);
-                let jsResults = results.toJs ? results.toJs() : results;
+                debugLog('🐍 Executing calculation Python code...');
+                const results = capturePythonError(pythonCode, 'Equity Calculation');
+                debugLog(`📊 Raw calculation results: ${JSON.stringify(results)}`);
+                
+                let jsResults;
+                if (typeof results === 'object' && results !== null) {
+                    jsResults = results.toJs ? results.toJs() : results;
+                } else {
+                    jsResults = results;
+                }
+                
+                debugLog(`📊 Converted results: ${JSON.stringify(jsResults)}`);
+                
+                if (!jsResults || typeof jsResults !== 'object') {
+                    throw new Error(`Calculation returned invalid result type: ${typeof jsResults}, value: ${jsResults}`);
+                }
+                
+                if (jsResults.success === false) {
+                    debugLog(`❌ Python calculation failed: ${jsResults.error}`, true);
+                    debugLog(`❌ Error type: ${jsResults.error_type}`, true);
+                    debugLog(`❌ Traceback: ${jsResults.traceback}`, true);
+                    throw new Error(`Python calculation failed: ${jsResults.error}`);
+                }
                 
                 if (!jsResults.success) {
-                    throw new Error(jsResults.error || 'Unknown Python error');
+                    throw new Error(`Calculation didn't return success flag. Got: ${JSON.stringify(jsResults)}`);
                 }
                 
                 showResults(jsResults);
