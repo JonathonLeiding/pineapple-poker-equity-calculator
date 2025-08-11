@@ -391,10 +391,27 @@
                 <button class="btn-gray" onclick="testPython()">
                     Test Python
                 </button>
+                <button class="btn-gray" onclick="toggleDebugConsole()">
+                    Show Debug Console
+                </button>
+                <button class="btn-gray" onclick="copyDebugLog()">
+                    Copy Debug Log
+                </button>
             </div>
             
             <div id="status"></div>
             <div id="results"></div>
+            
+            <!-- Enhanced Debug Console -->
+            <div id="debugConsole" style="display: none; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 2px solid #dee2e6;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h4 style="margin: 0; color: #495057;">🐛 Debug Console</h4>
+                    <button onclick="clearDebugLog()" style="padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px;">Clear</button>
+                </div>
+                <div id="debugOutput" style="background: #ffffff; border: 1px solid #ced4da; border-radius: 4px; padding: 15px; max-height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4;">
+                    <div style="color: #6c757d;">Debug output will appear here...</div>
+                </div>
+            </div>
         </div>
         
         <!-- Info Section -->
@@ -724,14 +741,134 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             { symbol: '♣', value: 'c', color: 'black' }
         ];
         
+        // ============================================================================
+        // ENHANCED DEBUG SYSTEM
+        // ============================================================================
+        
+        let debugHistory = [];
+        let debugConsoleVisible = false;
+        
         function debugLog(message, isError = false) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = {
+                time: timestamp,
+                message: message,
+                isError: isError,
+                type: isError ? 'ERROR' : 'INFO'
+            };
+            
+            debugHistory.push(logEntry);
+            
+            // Console output
+            if (isError) {
+                console.error(`[${timestamp}] ${message}`);
+            } else {
+                console.log(`[${timestamp}] ${message}`);
+            }
+            
+            // Update debug console if visible
+            if (debugConsoleVisible) {
+                updateDebugConsole();
+            }
+            
+            // Update status area (keep original behavior)
             if (debugMode) {
-                console.log(message);
                 const status = document.getElementById('status');
                 const currentContent = status.innerHTML;
-                const timestamp = new Date().toLocaleTimeString();
                 const className = isError ? 'error' : 'debug';
                 status.innerHTML = currentContent + `<div class="status ${className}">[${timestamp}] ${message}</div>`;
+            }
+        }
+        
+        function toggleDebugConsole() {
+            const console = document.getElementById('debugConsole');
+            debugConsoleVisible = !debugConsoleVisible;
+            
+            if (debugConsoleVisible) {
+                console.style.display = 'block';
+                updateDebugConsole();
+                document.querySelector('button[onclick="toggleDebugConsole()"]').textContent = 'Hide Debug Console';
+            } else {
+                console.style.display = 'none';
+                document.querySelector('button[onclick="toggleDebugConsole()"]').textContent = 'Show Debug Console';
+            }
+        }
+        
+        function updateDebugConsole() {
+            const output = document.getElementById('debugOutput');
+            if (!output) return;
+            
+            let html = '';
+            debugHistory.forEach(entry => {
+                const color = entry.isError ? '#dc3545' : '#495057';
+                const icon = entry.isError ? '❌' : '📝';
+                html += `<div style="margin-bottom: 8px; color: ${color};">
+                    <span style="color: #6c757d;">[${entry.time}]</span> 
+                    ${icon} <strong>${entry.type}:</strong> ${entry.message}
+                </div>`;
+            });
+            
+            if (html === '') {
+                html = '<div style="color: #6c757d;">No debug messages yet...</div>';
+            }
+            
+            output.innerHTML = html;
+            output.scrollTop = output.scrollHeight; // Auto-scroll to bottom
+        }
+        
+        function clearDebugLog() {
+            debugHistory = [];
+            updateDebugConsole();
+            document.getElementById('status').innerHTML = '';
+        }
+        
+        function copyDebugLog() {
+            const logText = debugHistory.map(entry => 
+                `[${entry.time}] ${entry.type}: ${entry.message}`
+            ).join('\n');
+            
+            navigator.clipboard.writeText(logText).then(() => {
+                alert('Debug log copied to clipboard!');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = logText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('Debug log copied to clipboard!');
+            });
+        }
+        
+        // Capture Python errors and console output
+        function capturePythonError(pythonCode, operation) {
+            try {
+                debugLog(`🐍 Executing Python: ${operation}`);
+                debugLog(`📄 Python Code:\n${pythonCode.substring(0, 200)}${pythonCode.length > 200 ? '...' : ''}`);
+                
+                const result = pyodide.runPython(pythonCode);
+                debugLog(`✅ Python Result: ${result}`);
+                return result;
+            } catch (error) {
+                debugLog(`❌ Python Execution Failed in ${operation}`, true);
+                debugLog(`Error Type: ${error.constructor.name}`, true);
+                debugLog(`Error Message: ${error.message}`, true);
+                debugLog(`Error Stack: ${error.stack}`, true);
+                
+                // Try to get Python traceback
+                try {
+                    const traceback = pyodide.runPython(`
+import traceback
+import sys
+traceback.format_exc()
+                    `);
+                    debugLog(`Python Traceback: ${traceback}`, true);
+                } catch (tbError) {
+                    debugLog(`Could not get Python traceback: ${tbError.message}`, true);
+                }
+                
+                throw error;
             }
         }
         
