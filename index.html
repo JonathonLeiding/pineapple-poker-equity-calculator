@@ -1274,13 +1274,27 @@ equity_results = estimate_equity(hero, villain, deck, 1000)
                         `;
                         
                         const fallbackResults = capturePythonError(fallbackCode, 'Fallback Calculation');
-                        const fallbackJs = fallbackResults.toJs ? fallbackResults.toJs() : fallbackResults;
+                        debugLog(`📊 Raw fallback results: ${JSON.stringify(fallbackResults)}`);
+                        
+                        // Handle both Python proxy objects and regular objects
+                        let fallbackJs;
+                        if (fallbackResults && typeof fallbackResults === 'object') {
+                            if (fallbackResults.toJs) {
+                                fallbackJs = fallbackResults.toJs();
+                            } else {
+                                fallbackJs = fallbackResults;
+                            }
+                        } else {
+                            throw new Error(`Fallback returned invalid type: ${typeof fallbackResults}`);
+                        }
+                        
+                        debugLog(`📊 Converted fallback results: ${JSON.stringify(fallbackJs)}`);
                         
                         jsResults = {
                             success: true,
-                            player1_equity: fallbackJs.player1_equity,
-                            player2_equity: fallbackJs.player2_equity,
-                            ties: fallbackJs.ties,
+                            player1_equity: fallbackJs.player1_equity || fallbackJs['player1_equity'] || 0,
+                            player2_equity: fallbackJs.player2_equity || fallbackJs['player2_equity'] || 0,
+                            ties: fallbackJs.ties || fallbackJs['ties'] || 0,
                             simulations: 1000,
                             player1_cards: p1Cards,
                             player2_cards: p2Cards,
@@ -1296,10 +1310,33 @@ equity_results = estimate_equity(hero, villain, deck, 1000)
                     }
                 }
                 
-                // Only call showResults if we have valid results
-                if (jsResults && jsResults.success) {
-                    showResults(jsResults);
-                    const note = jsResults.note ? ` (${jsResults.note})` : '';
+                // Fix the object conversion issue
+                if (jsResults) {
+                    // Ensure we have the right format regardless of how we got the results
+                    const finalResults = {
+                        success: true,
+                        player1_equity: typeof jsResults.player1_equity === 'number' ? jsResults.player1_equity : 
+                                       typeof jsResults['player1_equity'] === 'number' ? jsResults['player1_equity'] : 0,
+                        player2_equity: typeof jsResults.player2_equity === 'number' ? jsResults.player2_equity : 
+                                       typeof jsResults['player2_equity'] === 'number' ? jsResults['player2_equity'] : 0,
+                        ties: typeof jsResults.ties === 'number' ? jsResults.ties : 
+                              typeof jsResults['ties'] === 'number' ? jsResults['ties'] : 0,
+                        simulations: jsResults.simulations || 1000,
+                        player1_cards: p1Cards,
+                        player2_cards: p2Cards,
+                        community_cards: communityCards,
+                        note: jsResults.note || ''
+                    };
+                    
+                    debugLog(`📊 Final formatted results: ${JSON.stringify(finalResults)}`);
+                    debugLog(`📊 P1: ${finalResults.player1_equity}, P2: ${finalResults.player2_equity}, Ties: ${finalResults.ties}`);
+                    
+                    if (finalResults.player1_equity === 0 && finalResults.player2_equity === 0 && finalResults.ties === 0) {
+                        throw new Error('All equity values are 0 - something went wrong with the calculation');
+                    }
+                    
+                    showResults(finalResults);
+                    const note = finalResults.note ? ` (${finalResults.note})` : '';
                     showStatus(`✅ Calculation complete!${note}`, 'success');
                 } else {
                     throw new Error('No valid results to display');
