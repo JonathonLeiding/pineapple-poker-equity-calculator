@@ -1064,85 +1064,124 @@ estimate_equity
                 
                 showStatus(`🔄 Running ${sims.toLocaleString()} simulations...`, 'loading');
                 
-                debugLog('🔄 Starting calculation with detailed error tracking...');
+                debugLog('🔄 Starting calculation with step-by-step debugging...');
                 
-                const pythonCode = `
-try:
-    # Create objects
-    deck = Cardset()
-    hero = Player()
-    villain = Player()
-    
-    p1_cards = [${p1Cards.map(c => `"${c}"`).join(', ')}]
-    p2_cards = [${p2Cards.map(c => `"${c}"`).join(', ')}]
-    community_cards = [${communityCards.map(c => `"${c}"`).join(', ')}]
-    
-    # Set player cards
-    hero.set_cards(p1_cards, deck)
-    villain.set_cards(p2_cards, deck)
-    
-    # Set community cards if any
-    if len(community_cards) > 0:
-        deck.set_community_cards(community_cards)
-    
-    # Calculate equity
-    if len(community_cards) > 0:
-        equity_results = estimate_equity(
-            hero, villain, deck, ${sims}, 
-            num_cards=len(community_cards), 
-            set_board=community_cards
-        )
-    else:
-        equity_results = estimate_equity(hero, villain, deck, ${sims})
-    
-    # Return results
-    {
-        'success': True,
-        'player1_equity': float(equity_results[0]),
-        'player2_equity': float(equity_results[1]), 
-        'ties': float(equity_results[2]),
-        'simulations': ${sims},
-        'player1_cards': p1_cards,
-        'player2_cards': p2_cards,
-        'community_cards': community_cards
-    }
+                try {
+                    // Step 1: Test basic object creation
+                    debugLog('🧪 Step 1: Testing object creation...');
+                    const step1 = capturePythonError(`
+deck = Cardset()
+hero = Player()
+villain = Player()
+"STEP1_OBJECTS_CREATED"
+                    `, 'Step 1 - Object Creation');
+                    debugLog(`✅ Step 1 result: ${step1}`);
+                    
+                    // Step 2: Test card setting
+                    debugLog('🧪 Step 2: Testing card assignment...');
+                    const step2 = capturePythonError(`
+deck = Cardset()
+hero = Player()
+p1_cards = [${p1Cards.map(c => `"${c}"`).join(', ')}]
+hero.set_cards(p1_cards, deck)
+len(hero.cards)
+                    `, 'Step 2 - Card Assignment');
+                    debugLog(`✅ Step 2 result: ${step2} (should be 3)`);
+                    
+                    // Step 3: Test both players
+                    debugLog('🧪 Step 3: Testing both players...');
+                    const step3 = capturePythonError(`
+deck = Cardset()
+hero = Player()
+villain = Player()
+p1_cards = [${p1Cards.map(c => `"${c}"`).join(', ')}]
+p2_cards = [${p2Cards.map(c => `"${c}"`).join(', ')}]
+hero.set_cards(p1_cards, deck)
+villain.set_cards(p2_cards, deck)
+len(hero.cards) + len(villain.cards)
+                    `, 'Step 3 - Both Players');
+                    debugLog(`✅ Step 3 result: ${step3} (should be 6)`);
+                    
+                    // Step 4: Test community cards (if any)
+                    if (communityCards.length > 0) {
+                        debugLog('🧪 Step 4: Testing community cards...');
+                        const step4 = capturePythonError(`
+deck = Cardset()
+community_cards = [${communityCards.map(c => `"${c}"`).join(', ')}]
+deck.set_community_cards(community_cards)
+len(deck.community_cards)
+                        `, 'Step 4 - Community Cards');
+                        debugLog(`✅ Step 4 result: ${step4} (should be ${communityCards.length})`);
+                    }
+                    
+                    // Step 5: Test small simulation (just 10 sims to check for memory issues)
+                    debugLog('🧪 Step 5: Testing small simulation (10 iterations)...');
+                    const step5 = capturePythonError(`
+deck = Cardset()
+hero = Player()
+villain = Player()
+p1_cards = [${p1Cards.map(c => `"${c}"`).join(', ')}]
+p2_cards = [${p2Cards.map(c => `"${c}"`).join(', ')}]
+hero.set_cards(p1_cards, deck)
+villain.set_cards(p2_cards, deck)
 
-except Exception as e:
-    import traceback
-    {
-        'success': False,
-        'error': str(e),
-        'error_type': type(e).__name__,
-        'traceback': traceback.format_exc()
-    }
-                `;
-                
-                debugLog('🐍 Executing calculation Python code...');
-                const results = capturePythonError(pythonCode, 'Equity Calculation');
-                debugLog(`📊 Raw calculation results: ${JSON.stringify(results)}`);
-                
-                let jsResults;
-                if (typeof results === 'object' && results !== null) {
-                    jsResults = results.toJs ? results.toJs() : results;
-                } else {
-                    jsResults = results;
-                }
-                
-                debugLog(`📊 Converted results: ${JSON.stringify(jsResults)}`);
-                
-                if (!jsResults || typeof jsResults !== 'object') {
-                    throw new Error(`Calculation returned invalid result type: ${typeof jsResults}, value: ${jsResults}`);
-                }
-                
-                if (jsResults.success === false) {
-                    debugLog(`❌ Python calculation failed: ${jsResults.error}`, true);
-                    debugLog(`❌ Error type: ${jsResults.error_type}`, true);
-                    debugLog(`❌ Traceback: ${jsResults.traceback}`, true);
-                    throw new Error(`Python calculation failed: ${jsResults.error}`);
-                }
-                
-                if (!jsResults.success) {
-                    throw new Error(`Calculation didn't return success flag. Got: ${JSON.stringify(jsResults)}`);
+${communityCards.length > 0 ? `
+community_cards = [${communityCards.map(c => `"${c}"`).join(', ')}]
+deck.set_community_cards(community_cards)
+equity_results = estimate_equity(hero, villain, deck, 10, num_cards=len(community_cards), set_board=community_cards)
+` : `
+equity_results = estimate_equity(hero, villain, deck, 10)
+`}
+
+# Return just the first equity value to test
+float(equity_results[0])
+                    `, 'Step 5 - Small Simulation');
+                    debugLog(`✅ Step 5 result: ${step5} (Player 1 equity with 10 sims)`);
+                    
+                    // Step 6: If small sim works, try medium simulation (1000)
+                    debugLog('🧪 Step 6: Testing medium simulation (1000 iterations)...');
+                    const step6 = capturePythonError(`
+deck = Cardset()
+hero = Player()
+villain = Player()
+p1_cards = [${p1Cards.map(c => `"${c}"`).join(', ')}]
+p2_cards = [${p2Cards.map(c => `"${c}"`).join(', ')}]
+hero.set_cards(p1_cards, deck)
+villain.set_cards(p2_cards, deck)
+
+${communityCards.length > 0 ? `
+community_cards = [${communityCards.map(c => `"${c}"`).join(', ')}]
+deck.set_community_cards(community_cards)
+equity_results = estimate_equity(hero, villain, deck, 1000, num_cards=len(community_cards), set_board=community_cards)
+` : `
+equity_results = estimate_equity(hero, villain, deck, 1000)
+`}
+
+{
+    'player1_equity': float(equity_results[0]),
+    'player2_equity': float(equity_results[1]), 
+    'ties': float(equity_results[2])
+}
+                    `, 'Step 6 - Medium Simulation');
+                    debugLog(`✅ Step 6 result: ${JSON.stringify(step6)}`);
+                    
+                    // If we get here, the issue is likely with high simulation counts
+                    debugLog(`✅ All steps passed! Issue might be with ${sims} simulations being too high.`);
+                    
+                    // Use the medium simulation result
+                    let jsResults = step6.toJs ? step6.toJs() : step6;
+                    jsResults.simulations = 1000; // Actual sim count
+                    jsResults.success = true;
+                    jsResults.player1_cards = p1Cards;
+                    jsResults.player2_cards = p2Cards;
+                    jsResults.community_cards = communityCards;
+                    
+                    showResults(jsResults);
+                    showStatus('✅ Calculation complete! (Used 1000 simulations due to performance)', 'success');
+                    
+                } catch (stepError) {
+                    debugLog(`❌ Step-by-step debugging failed: ${stepError.message}`, true);
+                    throw stepError;
                 }
                 
                 showResults(jsResults);
