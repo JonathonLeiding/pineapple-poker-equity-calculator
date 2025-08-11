@@ -665,6 +665,10 @@ def rank_value(rank):
     return values[rank]
 
 def eval_decoder_comparison(p1_string, p2_string, ret_string=False):
+    """
+    Compares two hand strings and returns the winner
+    Hand format: "1AsAcKhTd8s" where first char is hand type, then pairs of chars are cards
+    """
     if p1_string == p2_string:
         return 0 if not ret_string else p1_string
     
@@ -676,11 +680,26 @@ def eval_decoder_comparison(p1_string, p2_string, ret_string=False):
     elif p2_hand > p1_hand:
         return 2 if not ret_string else p2_string
     else:
-        # Same hand type, compare ranks
-        for i in range(1, min(len(p1_string), len(p2_string))):
-            if i < len(p1_string) and i < len(p2_string):
-                p1_rank = rank_value(p1_string[i])
-                p2_rank = rank_value(p2_string[i])
+        # Same hand type, compare card by card
+        # Extract cards from the string (skip first character, then every 2 chars)
+        p1_cards = []
+        p2_cards = []
+        
+        # Parse cards from string format like "1AsAcKhTd8s"
+        for i in range(1, len(p1_string), 2):
+            if i + 1 < len(p1_string):
+                p1_cards.append(p1_string[i:i+2])  # Get 2-char card like "As"
+        
+        for i in range(1, len(p2_string), 2):
+            if i + 1 < len(p2_string):
+                p2_cards.append(p2_string[i:i+2])  # Get 2-char card like "Ac"
+        
+        # Compare ranks of corresponding cards
+        for i in range(min(len(p1_cards), len(p2_cards))):
+            if len(p1_cards[i]) >= 1 and len(p2_cards[i]) >= 1:
+                p1_rank = rank_value(p1_cards[i][0])  # Get rank from card
+                p2_rank = rank_value(p2_cards[i][0])  # Get rank from card
+                
                 if p1_rank > p2_rank:
                     return 1 if not ret_string else p1_string
                 elif p2_rank > p1_rank:
