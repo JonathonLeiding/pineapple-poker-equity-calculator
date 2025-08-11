@@ -1244,10 +1244,10 @@ except Exception as e:
                 } catch (error) {
                     debugLog(`❌ Calculation failed: ${error.message}`, true);
                     
-                    // Fallback: try with reduced simulation count
-                    debugLog(`🔄 Trying fallback with 1000 simulations...`);
+                    // Fallback: try with reduced simulation count using direct pyodide.runPython
+                    debugLog(`🔄 Trying fallback with direct Python execution...`);
                     try {
-                        const fallbackCode = `
+                        const directPythonCode = `
 deck = Cardset()
 hero = Player()
 villain = Player()
@@ -1266,35 +1266,46 @@ equity_results = estimate_equity(hero, villain, deck, 1000, num_cards=len(commun
 equity_results = estimate_equity(hero, villain, deck, 1000)
 `}
 
-{
-    'player1_equity': float(equity_results[0]),
-    'player2_equity': float(equity_results[1]), 
-    'ties': float(equity_results[2])
-}
+# Return results as individual variables for easier access
+player1_equity = float(equity_results[0])
+player2_equity = float(equity_results[1])
+ties = float(equity_results[2])
+
+# Create final result
+[player1_equity, player2_equity, ties]
                         `;
                         
-                        const fallbackResults = capturePythonError(fallbackCode, 'Fallback Calculation');
-                        debugLog(`📊 Raw fallback results: ${JSON.stringify(fallbackResults)}`);
+                        debugLog(`🐍 Executing direct Python...`);
+                        const directResults = pyodide.runPython(directPythonCode);
+                        debugLog(`📊 Direct Python results: ${directResults}`);
+                        debugLog(`📊 Direct results type: ${typeof directResults}`);
                         
-                        // Handle both Python proxy objects and regular objects
-                        let fallbackJs;
-                        if (fallbackResults && typeof fallbackResults === 'object') {
-                            if (fallbackResults.toJs) {
-                                fallbackJs = fallbackResults.toJs();
-                            } else {
-                                fallbackJs = fallbackResults;
-                            }
+                        // DirectResults should be a Python list, convert to JS array
+                        let equityArray;
+                        if (directResults && directResults.toJs) {
+                            equityArray = directResults.toJs();
+                        } else if (Array.isArray(directResults)) {
+                            equityArray = directResults;
                         } else {
-                            throw new Error(`Fallback returned invalid type: ${typeof fallbackResults}`);
+                            // If it's a PyProxy or other Python object, try to access by index
+                            equityArray = [
+                                directResults[0],
+                                directResults[1], 
+                                directResults[2]
+                            ];
                         }
                         
-                        debugLog(`📊 Converted fallback results: ${JSON.stringify(fallbackJs)}`);
+                        debugLog(`📊 Converted equity array: ${JSON.stringify(equityArray)}`);
+                        
+                        if (!Array.isArray(equityArray) || equityArray.length !== 3) {
+                            throw new Error(`Expected array of 3 equity values, got: ${JSON.stringify(equityArray)}`);
+                        }
                         
                         jsResults = {
                             success: true,
-                            player1_equity: fallbackJs.player1_equity || fallbackJs['player1_equity'] || 0,
-                            player2_equity: fallbackJs.player2_equity || fallbackJs['player2_equity'] || 0,
-                            ties: fallbackJs.ties || fallbackJs['ties'] || 0,
+                            player1_equity: parseFloat(equityArray[0]) || 0,
+                            player2_equity: parseFloat(equityArray[1]) || 0,
+                            ties: parseFloat(equityArray[2]) || 0,
                             simulations: 1000,
                             player1_cards: p1Cards,
                             player2_cards: p2Cards,
@@ -1302,7 +1313,7 @@ equity_results = estimate_equity(hero, villain, deck, 1000)
                             note: `Fallback used: ${sims} simulations failed, used 1000 instead`
                         };
                         
-                        debugLog(`✅ Fallback successful: P1=${jsResults.player1_equity}, P2=${jsResults.player2_equity}, Ties=${jsResults.ties}`);
+                        debugLog(`✅ Direct fallback successful: P1=${jsResults.player1_equity}, P2=${jsResults.player2_equity}, Ties=${jsResults.ties}`);
                         
                     } catch (fallbackError) {
                         debugLog(`❌ Fallback also failed: ${fallbackError.message}`, true);
