@@ -470,18 +470,25 @@
         // FIXED PYTHON CODE - BASED ON YOUR ACTUAL FILES
         // ============================================================================
         
-        // Fixed TempPlayer - simpler implementation matching your temp_player.py
+        // Standalone TempPlayer - no imports needed
         const tempPlayerPython = `
 class TempPlayer:
     def __init__(self):
         self.cards = []
 
     def set_cards(self, card_list, deck):
+        # Simplified - just add cards without blocking logic for temp evaluation
         for card in card_list:
             self.cards.append(card)
+    
+    def get_cards(self):
+        return self.cards
+    
+    def clear_cards(self):
+        self.cards = []
 `;
 
-        // Fixed Player class to match your actual player.py
+        // Standalone Player class - no imports
         const playerPython = `
 class Player:
     def __init__(self, card_list=[]):
@@ -503,7 +510,7 @@ class Player:
         self.cards = []
 `;
 
-        // Fixed Cardset to match your actual Cardset.py
+        // Standalone Cardset - no imports
         const cardsetPython = `
 import random
 
@@ -515,7 +522,7 @@ class Cardset:
                      "5s", "5c", "5d", "5h", "4s", "4c", "4d", "4h", "3s", "3c", "3d", "3h",
                      "2s", "2c", "2d", "2h")
         self.blocked_cards = []
-        self.community_cards = set_comm
+        self.community_cards = list(set_comm)  # Make a copy to avoid reference issues
 
     def add_block(self, card_list):
         for card in card_list:
@@ -532,7 +539,7 @@ class Cardset:
         self.blocked_cards = []
 
     def set_community_cards(self, card_list):
-        self.community_cards = card_list
+        self.community_cards = list(card_list)  # Make a copy
 
     def add_community_cards(self, card_list):
         for card in card_list:
@@ -1134,21 +1141,40 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
                 pyodide.runPython(monteCarloPython);
                 debugLog('✅ Monte Carlo loaded');
                 
-                // Test that everything works
+                // Test that everything works with detailed error reporting
                 debugLog('🧪 Testing basic functionality...');
                 const testResult = pyodide.runPython(`
 try:
+    # Test each class individually first
     deck = Cardset()
+    result = f"Cardset created with {len(deck.deck)} cards"
+    
     player1 = Player()
+    result += ", Player1 created"
+    
     player2 = Player()
+    result += ", Player2 created"
+    
+    # Test setting cards
     player1.set_cards(['As', 'Ks', 'Qs'], deck)
+    result += f", Player1 has {len(player1.cards)} cards"
+    
     player2.set_cards(['2s', '3s', '4s'], deck)
-    "SUCCESS"
+    result += f", Player2 has {len(player2.cards)} cards"
+    
+    # Test deck blocking
+    result += f", Deck has {len(deck.blocked_cards)} blocked cards"
+    
+    "SUCCESS: " + result
+    
 except Exception as e:
-    str(e)
+    import traceback
+    f"ERROR: {str(e)} | Traceback: {traceback.format_exc()}"
                 `);
                 
-                if (testResult !== "SUCCESS") {
+                debugLog(`🧪 Initialization test result: ${testResult}`);
+                
+                if (!testResult || !testResult.startsWith("SUCCESS")) {
                     throw new Error(`Initialization test failed: ${testResult}`);
                 }
                 
