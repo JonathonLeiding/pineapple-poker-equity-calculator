@@ -635,8 +635,18 @@ def kicker(fin_list, num_kickers, ret_list=False):
         return "".join(sorted_cards[:num_kickers])
 
 def rank_value(rank):
+    # Debug: Check what we're actually getting
+    if not isinstance(rank, str):
+        raise ValueError(f"rank_value got non-string: {rank} (type: {type(rank)})")
+    if len(rank) != 1:
+        raise ValueError(f"rank_value got multi-character string: '{rank}' (should be single character)")
+    
     values = {"A": 14, "K": 13, "Q": 12, "J": 11, "T": 10, "9": 9, "8": 8, "7": 7, "6": 6, "5": 5, "4": 4, "3": 3, "2": 2}
-    return values[rank]  # Direct lookup - we know all ranks are valid
+    
+    if rank not in values:
+        raise ValueError(f"rank_value got invalid rank: '{rank}' (expected one of: A,K,Q,J,T,9,8,7,6,5,4,3,2)")
+    
+    return values[rank]
 
 def eval_decoder_comparison(p1_string, p2_string, ret_string=False):
     if p1_string == p2_string:
