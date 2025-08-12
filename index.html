@@ -603,13 +603,22 @@
                             throw new Error(`Failed to fetch ${file}: ${response.status} ${response.statusText}`);
                         }
                         
-                        const code = await response.text();
+                        let code = await response.text();
+                        
+                        // Remove problematic imports that cause module loading issues
+                        if (file === 'temp_player.py') {
+                            code = code.replace(/^import player\s*$/m, '# import player # Removed for web deployment');
+                        }
+                        if (file === 'Cardset.py') {
+                            code = code.replace(/^import player\s*$/m, '# import player # Removed for web deployment');
+                        }
+                        
                         pyodide.runPython(code);
                         debugLog(`✅ ${file} loaded successfully`);
                         
                     } catch (error) {
                         debugLog(`❌ Could not load ${file}: ${error.message}`, true);
-                        throw error; // Stop if any file fails to load
+                        throw error;
                     }
                 }
                 
