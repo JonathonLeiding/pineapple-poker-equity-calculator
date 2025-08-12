@@ -608,6 +608,10 @@
                         let code = await response.text();
                         debugLog(`📄 Successfully fetched ${file}, size: ${code.length} chars`);
                         
+                        // Show first few lines to debug what we're dealing with
+                        const firstLines = code.split('\n').slice(0, 5).join('\n');
+                        debugLog(`📋 First lines of ${file}: ${firstLines}`);
+                        
                         // Handle specific file modifications to remove ALL imports
                         if (file === 'temp_player.py') {
                             debugLog(`🔧 Modifying temp_player.py to remove inheritance issues`);
@@ -629,25 +633,22 @@ class TempPlayer:
 `;
                         }
                         
-                        if (file === 'Cardset.py') {
-                            debugLog(`🔧 Modifying Cardset.py to remove ALL imports`);
-                            // Remove ALL import statements and problematic code
-                            code = code.replace(/^import.*$/gm, '# import removed');
-                            code = code.replace(/if __name__ == "__main__":[\s\S]*$/, '# main block removed');
-                        }
-                        
-                        if (file === 'evaluator.py') {
-                            debugLog(`🔧 Modifying evaluator.py to remove ALL imports`);
+                        // Remove imports from ALL other files
+                        if (file === 'Cardset.py' || file === 'evaluator.py' || file === 'monte_carlo.py') {
+                            debugLog(`🔧 Removing ALL imports from ${file}`);
+                            
+                            // Count imports before removal
+                            const importCount = (code.match(/^import.*$/gm) || []).length + (code.match(/^from.*$/gm) || []).length;
+                            debugLog(`📊 Found ${importCount} import statements in ${file}`);
+                            
                             // Remove ALL import statements 
                             code = code.replace(/^import.*$/gm, '# import removed');
-                        }
-                        
-                        if (file === 'monte_carlo.py') {
-                            debugLog(`🔧 Modifying monte_carlo.py to remove ALL imports`);
-                            // Remove ALL import statements and problematic main blocks
-                            code = code.replace(/^import.*$/gm, '# import removed');
-                            code = code.replace(/^from.*$/gm, '# import removed');
+                            code = code.replace(/^from.*$/gm, '# from import removed');
+                            
+                            // Remove problematic main blocks
                             code = code.replace(/if __name__ == "__main__":[\s\S]*$/, '# main block removed');
+                            
+                            debugLog(`✅ Imports removed from ${file}`);
                         }
                         
                         debugLog(`🐍 Executing ${file}...`);
