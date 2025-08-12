@@ -1274,19 +1274,26 @@ equity_results = estimate_equity(hero, villain, deck, 1000)
                         `;
                         
                         const fallbackResults = capturePythonError(fallbackCode, 'Fallback Calculation');
-                        const fallbackJs = fallbackResults.toJs ? fallbackResults.toJs() : fallbackResults;
-                        
+                        const fallbackJs = fallbackResults && fallbackResults.toJs ? fallbackResults.toJs() : fallbackResults;
+
+                        const p1_eq = fallbackJs.player1_equity || fallbackJs['player1_equity'];
+                        const p2_eq = fallbackJs.player2_equity || fallbackJs['player2_equity'];
+                        const ties_eq = fallbackJs.ties || fallbackJs['ties'];
+
                         jsResults = {
                             success: true,
-                            player1_equity: fallbackJs.player1_equity,
-                            player2_equity: fallbackJs.player2_equity,
-                            ties: fallbackJs.ties,
+                            player1_equity: parseFloat(p1_eq),
+                            player2_equity: parseFloat(p2_eq),
+                            ties: parseFloat(ties_eq),
                             simulations: 1000,
                             player1_cards: p1Cards,
                             player2_cards: p2Cards,
                             community_cards: communityCards,
                             note: `Fallback used: ${sims} simulations failed, used 1000 instead`
                         };
+
+                        debugLog(`✅ Fallback successful: P1=${jsResults.player1_equity}, P2=${jsResults.player2_equity}, Ties=${jsResults.ties}`);
+
                         
                         debugLog(`✅ Fallback successful: P1=${jsResults.player1_equity}, P2=${jsResults.player2_equity}, Ties=${jsResults.ties}`);
                         
