@@ -388,9 +388,6 @@
                 <button class="btn-gray" onclick="clearAll()">
                     Clear All
                 </button>
-                <button class="btn-gray" onclick="testPython()">
-                    Test Python
-                </button>
                 <button class="btn-gray" onclick="toggleDebugConsole()">
                     Show Debug Console
                 </button>
@@ -764,21 +761,33 @@ def eval_decoder_comparison(p1_string, p2_string, ret_string=False, ret_list=Fal
 import random
 
 def simulate_hand(player1, player2, deck, best_hand=False, num_cards=0, set_board=[]):
+    # FIXED: Proper simulation for community cards
     if num_cards == 0:
+        # Pre-flop simulation
         deck.clear_all()
         deck.add_block(player1.cards)
         deck.add_block(player2.cards)
         deck.sim_full_comm()
-    elif num_cards >= 1:
+    else:
+        # Post-flop simulation - this was the bug!
         deck.clear_all()
-        deck.set_community_cards(set_board)
         deck.add_block(player1.cards)
         deck.add_block(player2.cards)
         
-        if len(set_board) < 5:
-            remaining_cards = 5 - len(set_board)
-            for _ in range(remaining_cards):
-                deck.sim_river()
+        # Set the known community cards
+        current_community = set_board.copy()
+        deck.add_block(current_community)
+        
+        # Simulate the remaining cards randomly
+        if len(current_community) < 5:
+            remaining_needed = 5 - len(current_community)
+            available_cards = [card for card in deck.deck if card not in deck.blocked_cards]
+            random_cards = random.sample(available_cards, remaining_needed)
+            current_community.extend(random_cards)
+            deck.add_block(random_cards)
+        
+        # Set the complete 5-card board for this simulation
+        deck.set_community_cards(current_community)
 
     is_pineapple = len(player1.cards) == 3
 
@@ -800,6 +809,7 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
     ties = 0
 
     for _ in range(num_simulations):
+        # FIXED: Each simulation gets fresh random cards
         if num_cards == 0:
             result = simulate_hand(player1, player2, deck)
         else:
