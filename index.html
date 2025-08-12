@@ -594,7 +594,9 @@
                 
                 debugLog('📦 Starting module loading sequence...');
                 
-                for (const file of pythonFiles) {
+                // Load Python files with delays to ensure proper module registration
+                for (let i = 0; i < pythonFiles.length; i++) {
+                    const file = pythonFiles[i];
                     try {
                         debugLog(`📝 Loading ${file}...`);
                         const response = await fetch(file);
@@ -604,25 +606,49 @@
                         }
                         
                         let code = await response.text();
+                        debugLog(`📄 Successfully fetched ${file}, size: ${code.length} chars`);
                         
-                        // Debug what we're actually loading
-                        debugLog(`📄 File content preview: ${code.substring(0, 100)}...`);
-                        
-                        // Check if this file has imports
-                        if (code.includes('import player')) {
-                            debugLog(`⚠️ Found 'import player' in ${file}, removing it`);
-                            code = code.replace(/import player\s*\n?/g, '# import player removed\n');
+                        // Handle specific file modifications
+                        if (file === 'temp_player.py') {
+                            debugLog(`🔧 Modifying temp_player.py to remove inheritance issues`);
+                            // Replace the entire class to avoid import issues
+                            code = `
+class TempPlayer:
+    def __init__(self):
+        self.cards = []
+
+    def set_cards(self, card_list, deck):
+        for card in card_list:
+            self.cards.append(card)
+    
+    def get_cards(self):
+        return self.cards
+    
+    def clear_cards(self):
+        self.cards = []
+`;
                         }
                         
-                        // Debug the modified code
-                        debugLog(`📝 Modified code preview: ${code.substring(0, 100)}...`);
+                        if (file === 'Cardset.py') {
+                            // Remove the import player line and the problematic main block
+                            debugLog(`🔧 Modifying Cardset.py to remove import issues`);
+                            code = code.replace(/import player\s*\n?/g, '# import player removed\n');
+                            code = code.replace(/if __name__ == "__main__":[\s\S]*$/, '# main block removed');
+                        }
                         
+                        debugLog(`🐍 Executing ${file}...`);
                         pyodide.runPython(code);
                         debugLog(`✅ ${file} loaded successfully`);
                         
+                        // Add delay between file loads to ensure proper module registration
+                        if (i < pythonFiles.length - 1) {
+                            debugLog(`⏳ Waiting 500ms before loading next file...`);
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                        
                     } catch (error) {
                         debugLog(`❌ Could not load ${file}: ${error.message}`, true);
-                        debugLog(`❌ Full error: ${error.stack}`, true);
+                        debugLog(`❌ Error details: ${error.stack || 'No stack trace'}`, true);
                         throw error;
                     }
                 }
