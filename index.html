@@ -608,7 +608,7 @@
                         let code = await response.text();
                         debugLog(`📄 Successfully fetched ${file}, size: ${code.length} chars`);
                         
-                        // Handle specific file modifications
+                        // Handle specific file modifications to remove ALL imports
                         if (file === 'temp_player.py') {
                             debugLog(`🔧 Modifying temp_player.py to remove inheritance issues`);
                             // Replace the entire class to avoid import issues
@@ -630,9 +630,23 @@ class TempPlayer:
                         }
                         
                         if (file === 'Cardset.py') {
-                            // Remove the import player line and the problematic main block
-                            debugLog(`🔧 Modifying Cardset.py to remove import issues`);
-                            code = code.replace(/import player\s*\n?/g, '# import player removed\n');
+                            debugLog(`🔧 Modifying Cardset.py to remove ALL imports`);
+                            // Remove ALL import statements and problematic code
+                            code = code.replace(/^import.*$/gm, '# import removed');
+                            code = code.replace(/if __name__ == "__main__":[\s\S]*$/, '# main block removed');
+                        }
+                        
+                        if (file === 'evaluator.py') {
+                            debugLog(`🔧 Modifying evaluator.py to remove ALL imports`);
+                            // Remove ALL import statements 
+                            code = code.replace(/^import.*$/gm, '# import removed');
+                        }
+                        
+                        if (file === 'monte_carlo.py') {
+                            debugLog(`🔧 Modifying monte_carlo.py to remove ALL imports`);
+                            // Remove ALL import statements and problematic main blocks
+                            code = code.replace(/^import.*$/gm, '# import removed');
+                            code = code.replace(/^from.*$/gm, '# import removed');
                             code = code.replace(/if __name__ == "__main__":[\s\S]*$/, '# main block removed');
                         }
                         
