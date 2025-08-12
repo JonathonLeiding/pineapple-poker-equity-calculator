@@ -640,10 +640,10 @@ class TempPlayer:
                         pyodide.runPython(code);
                         debugLog(`✅ ${file} loaded successfully`);
                         
-                        // Add delay between file loads to ensure proper module registration
+                        // Add longer delay between file loads to ensure proper module registration
                         if (i < pythonFiles.length - 1) {
-                            debugLog(`⏳ Waiting 500ms before loading next file...`);
-                            await new Promise(resolve => setTimeout(resolve, 500));
+                            debugLog(`⏳ Waiting 2 seconds before loading next file...`);
+                            await new Promise(resolve => setTimeout(resolve, 2000));
                         }
                         
                     } catch (error) {
