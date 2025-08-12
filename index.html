@@ -807,6 +807,12 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
     player1_wins = 0
     player2_wins = 0
     ties = 0
+    
+    # ADDED: Track combination statistics for pineapple
+    p1_combo_wins = [0, 0, 0]  # [combo1_wins, combo2_wins, combo3_wins]
+    p2_combo_wins = [0, 0, 0]
+    p1_combo_total = [0, 0, 0]  # Track which combo was best each time
+    p2_combo_total = [0, 0, 0]
 
     for _ in range(num_simulations):
         # FIXED: Each simulation gets fresh random cards
@@ -814,6 +820,36 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             result = simulate_hand(player1, player2, deck)
         else:
             result = simulate_hand(player1, player2, deck, num_cards=num_cards, set_board=set_board)
+
+        # ADDED: Track which combination won (for pineapple only)
+        if len(player1.cards) == 3:
+            # Get detailed results with best hand info
+            p1_result, p1_best_combo = evaluator_pineapple(player1, deck, best_hand=True)
+            p2_result, p2_best_combo = evaluator_pineapple(player2, deck, best_hand=True)
+            
+            # Determine which combo index was used
+            combos = [
+                [player1.cards[0], player1.cards[1]],
+                [player1.cards[0], player1.cards[2]], 
+                [player1.cards[1], player1.cards[2]]
+            ]
+            
+            # Find which combo was best for each player
+            p1_combo_idx = 0
+            p2_combo_idx = 0
+            for i, combo in enumerate(combos):
+                if combo == p1_best_combo:
+                    p1_combo_idx = i
+                if combo == p2_best_combo:
+                    p2_combo_idx = i
+            
+            p1_combo_total[p1_combo_idx] += 1
+            p2_combo_total[p2_combo_idx] += 1
+            
+            if result == 1:
+                p1_combo_wins[p1_combo_idx] += 1
+            elif result == 2:
+                p2_combo_wins[p2_combo_idx] += 1
 
         if result == 1:
             player1_wins += 1
@@ -826,7 +862,11 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
     player2_equity = player2_wins / num_simulations
     draw_equity = ties / num_simulations
 
-    return [player1_equity, player2_equity, draw_equity]
+    # Return basic results + combo stats if pineapple
+    if len(player1.cards) == 3:
+        return [player1_equity, player2_equity, draw_equity, p1_combo_wins, p1_combo_total, p2_combo_wins, p2_combo_total]
+    else:
+        return [player1_equity, player2_equity, draw_equity]
 `;
 
         // ============================================================================
@@ -1213,7 +1253,7 @@ equity_results = estimate_equity(hero, villain, deck, ${maxSims})
                         resultArray = pythonResults.toJs();
                     }
                     
-                    if (Array.isArray(resultArray) && resultArray.length === 3) {
+                    if (Array.isArray(resultArray) && resultArray.length >= 3) {
                         jsResults = {
                             player1_equity: parseFloat(resultArray[0]),
                             player2_equity: parseFloat(resultArray[1]),
@@ -1224,9 +1264,17 @@ equity_results = estimate_equity(hero, villain, deck, ${maxSims})
                             community_cards: communityCards
                         };
                         
+                        // ADDED: Parse combination statistics if available
+                        if (resultArray.length === 7) {
+                            jsResults.p1_combo_wins = resultArray[3];
+                            jsResults.p1_combo_total = resultArray[4];
+                            jsResults.p2_combo_wins = resultArray[5];
+                            jsResults.p2_combo_total = resultArray[6];
+                        }
+                        
                         debugLog(`✅ Main calculation successful: P1=${jsResults.player1_equity}, P2=${jsResults.player2_equity}, Ties=${jsResults.ties}`);
                     } else {
-                        throw new Error(`Expected array of 3 values, got: ${JSON.stringify(resultArray)}`);
+                        throw new Error(`Expected array of 3+ values, got: ${JSON.stringify(resultArray)}`);
                     }
                     
                 } catch (error) {
@@ -1403,6 +1451,53 @@ equity_results = estimate_equity(hero, villain, deck, 1000)
                         Community: ${results.community_cards.join(' ')}
                     </div>` : '';
                 
+                // ADDED: Combination breakdown for pineapple hands
+                let comboBreakdown = '';
+                if (results.p1_combo_wins && results.p1_combo_total) {
+                    const p1Combos = [
+                        `${results.player1_cards[0]} ${results.player1_cards[1]}`,
+                        `${results.player1_cards[0]} ${results.player1_cards[2]}`,
+                        `${results.player1_cards[1]} ${results.player1_cards[2]}`
+                    ];
+                    const p2Combos = [
+                        `${results.player2_cards[0]} ${results.player2_cards[1]}`,
+                        `${results.player2_cards[0]} ${results.player2_cards[2]}`,
+                        `${results.player2_cards[1]} ${results.player2_cards[2]}`
+                    ];
+                    
+                    comboBreakdown = `
+                        <div style="margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                            <h4 style="text-align: center; margin-bottom: 15px; color: #495057;">🎯 Combination Breakdown</h4>
+                            <div style="display: flex; justify-content: space-around;">
+                                <div style="flex: 1; margin-right: 20px;">
+                                    <h5 style="color: #2c5aa0; margin-bottom: 10px;">Player 1 Best Combos:</h5>
+                                    ${p1Combos.map((combo, i) => {
+                                        const wins = results.p1_combo_wins[i] || 0;
+                                        const total = results.p1_combo_total[i] || 1;
+                                        const winRate = ((wins / total) * 100).toFixed(1);
+                                        const usage = ((total / simCount) * 100).toFixed(1);
+                                        return `<div style="font-size: 13px; margin-bottom: 5px;">
+                                            <strong>${combo}</strong>: ${usage}% used, ${winRate}% won when used
+                                        </div>`;
+                                    }).join('')}
+                                </div>
+                                <div style="flex: 1;">
+                                    <h5 style="color: #dc3545; margin-bottom: 10px;">Player 2 Best Combos:</h5>
+                                    ${p2Combos.map((combo, i) => {
+                                        const wins = results.p2_combo_wins[i] || 0;
+                                        const total = results.p2_combo_total[i] || 1;
+                                        const winRate = ((wins / total) * 100).toFixed(1);
+                                        const usage = ((total / simCount) * 100).toFixed(1);
+                                        return `<div style="font-size: 13px; margin-bottom: 5px;">
+                                            <strong>${combo}</strong>: ${usage}% used, ${winRate}% won when used
+                                        </div>`;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
                 document.getElementById('results').innerHTML = `
                     <div class="results">
                         <h3>📊 Equity Results</h3>
@@ -1424,6 +1519,7 @@ equity_results = estimate_equity(hero, villain, deck, 1000)
                                 <div style="font-size: 14px; color: #666;">Split pot</div>
                             </div>
                         </div>
+                        ${comboBreakdown}
                         <div style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
                             Based on ${simCount.toLocaleString()} Monte Carlo simulations
                         </div>
