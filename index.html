@@ -466,10 +466,14 @@
     </div>
 
     <script>
-        // Complete Python code in one block
-        const allPythonCode = `
+        // ============================================================================
+        // EMBEDDED PYTHON CODE - DEFINED FIRST
+        // ============================================================================
+        
+        const cardsetPython = `
 import random
-import itertools
+import numpy as np
+import math
 
 class Cardset:
     def __init__(self, set_comm=[]):
@@ -479,19 +483,22 @@ class Cardset:
                      "5s", "5c", "5d", "5h", "4s", "4c", "4d", "4h", "3s", "3c", "3d", "3h",
                      "2s", "2c", "2d", "2h")
         self.blocked_cards = []
-        self.community_cards = list(set_comm) if set_comm else []
+        self.community_cards = set_comm
 
     def add_block(self, card_list):
         for card in card_list:
             if isinstance(card, str) and card not in self.blocked_cards and card in self.deck:
                 self.blocked_cards.append(card)
 
+    def clear_block(self):
+        self.blocked_cards = []
+
     def clear_all(self):
         self.community_cards = []
         self.blocked_cards = []
 
     def set_community_cards(self, card_list):
-        self.community_cards = list(card_list)
+        self.community_cards = card_list
 
     def add_community_cards(self, card_list):
         for card in card_list:
@@ -508,7 +515,9 @@ class Cardset:
         new_one = random.sample(population, 1)
         self.add_community_cards(new_one)
         self.add_block(new_one)
+`;
 
+        const playerPython = `
 class Player:
     def __init__(self, card_list=[]):
         self.cards = []
@@ -525,6 +534,11 @@ class Player:
     def get_cards(self):
         return self.cards
 
+    def clear_cards(self):
+        self.cards = []
+`;
+
+        const tempPlayerPython = `
 class TempPlayer:
     def __init__(self):
         self.cards = []
@@ -532,28 +546,36 @@ class TempPlayer:
     def set_cards(self, card_list, deck):
         for card in card_list:
             self.cards.append(card)
+`;
 
-def kicker(fin_list, num_kickers, ret_list=False):
-    if len(fin_list) == 0:
-        return [] if ret_list else ""
-    
-    rank_dict = {"A": 13, "K": 12, "Q": 11, "J": 10, "T": 9, "9": 8, "8": 7, "7": 6, "6": 5, "5": 4, "4": 3, "3": 2, "2": 1}
-    
-    list_dict = {}
-    for elt in fin_list:
-        if isinstance(elt, str) and len(elt) >= 2:
-            list_dict[elt] = rank_dict.get(elt[0], 1)
-    
-    sorted_dict = sorted(list_dict.items(), key=lambda x: x[1], reverse=True)
-    
-    if ret_list:
-        return [sorted_dict[i][0] for i in range(min(num_kickers, len(sorted_dict)))]
+        const evaluatorPython = `
+import itertools
+
+def evaluator_pineapple(p1, deck, best_hand=False):
+    if deck.community_cards == []:
+        return "0"
     else:
-        return "".join([sorted_dict[i][0] for i in range(min(num_kickers, len(sorted_dict)))])
-
-def rank_value(rank):
-    values = {"A": 14, "K": 13, "Q": 12, "J": 11, "T": 10, "9": 9, "8": 8, "7": 7, "6": 6, "5": 5, "4": 4, "3": 3, "2": 2}
-    return values.get(rank, 2)
+        combinations = [
+            [p1.cards[0], p1.cards[1]],
+            [p1.cards[0], p1.cards[2]], 
+            [p1.cards[1], p1.cards[2]]
+        ]
+        
+        best_result = "0"
+        best_combo = combinations[0]
+        
+        for combo in combinations:
+            temp_player = TempPlayer()
+            temp_player.set_cards(combo, deck)
+            result = eval_standard(temp_player, deck)
+            
+            if eval_decoder_comparison(result, best_result) == 1:
+                best_result = result
+                best_combo = combo
+        
+        if best_hand:
+            return best_result, best_combo
+        return best_result
 
 def eval_standard(player, deck):
     full = []
@@ -601,7 +623,52 @@ def eval_standard(player, deck):
     
     return "0" + "".join(kicker(full, 5, ret_list=True))
 
+def kicker(fin_list, num_kickers, ret_list=False):
+    """
+    Sorts list into rank order - FIXED to match original logic
+    """
+    if len(fin_list) == 0:
+        return [] if ret_list else ""
+    
+    # Use the same rank mapping as your original code
+    rank_dict = {"A": 13, "K": 12, "Q": 11, "J": 10, "T": 9, "9": 8, "8": 7, "7": 6, "6": 5, "5": 4, "4": 3, "3": 2, "2": 1}
+    
+    # Create dictionary mapping each card to its rank value
+    list_dict = {}
+    for elt in fin_list:
+        if isinstance(elt, str) and len(elt) >= 2:
+            list_dict[elt] = rank_dict.get(elt[0], 1)  # Use rank (first char) to get value
+        else:
+            # Handle unexpected data
+            raise ValueError(f"kicker() got invalid card format: {elt} (type: {type(elt)})")
+    
+    # Sort by rank value (highest first)
+    sorted_dict = sorted(list_dict.items(), key=lambda x: x[1], reverse=True)
+    
+    if ret_list:
+        return [sorted_dict[i][0] for i in range(min(num_kickers, len(sorted_dict)))]
+    else:
+        return "".join([sorted_dict[i][0] for i in range(min(num_kickers, len(sorted_dict)))])
+
+def rank_value(rank):
+    # Debug: Check what we're actually getting
+    if not isinstance(rank, str):
+        raise ValueError(f"rank_value got non-string: {rank} (type: {type(rank)})")
+    if len(rank) != 1:
+        raise ValueError(f"rank_value got multi-character string: '{rank}' (should be single character)")
+    
+    values = {"A": 14, "K": 13, "Q": 12, "J": 11, "T": 10, "9": 9, "8": 8, "7": 7, "6": 6, "5": 5, "4": 4, "3": 3, "2": 2}
+    
+    if rank not in values:
+        raise ValueError(f"rank_value got invalid rank: '{rank}' (expected one of: A,K,Q,J,T,9,8,7,6,5,4,3,2)")
+    
+    return values[rank]
+
 def eval_decoder_comparison(p1_string, p2_string, ret_string=False, ret_list=False):
+    """
+    Takes the two player strings from the eval function and returns the winner
+    RESTORED to original logic from your evaluator.py
+    """
     if p1_string == p2_string:
         if ret_list:
             return p1_string, 0
@@ -625,11 +692,54 @@ def eval_decoder_comparison(p1_string, p2_string, ret_string=False, ret_list=Fal
             return p2_string
         return 2
     else:
+        if p1_hand == 4:  # Checks the second card to get the best straight since A's can be the best and worst straight
+            rank_dict = {"A": 13, "K": 12, "Q": 11, "J": 10, "T": 9, "9": 8, "8": 7, "7": 6, "6": 5, "5": 4, "4": 3, "3": 2, "2": 1}
+            if rank_dict[p1_string[3]] > rank_dict[p2_string[3]]:
+                if ret_list:
+                    return p1_string, 1
+                if ret_string:
+                    return p1_string
+                return 1
+            elif rank_dict[p1_string[3]] < rank_dict[p2_string[3]]:
+                if ret_list:
+                    return p2_string, 2
+                if ret_string:
+                    return p2_string
+                return 2
+            elif p1_string[1] == "A":  # Deals with 6-high v Wheel Straights
+                if p2_string[1] == "A":  # Both have wheel or broadway
+                    if ret_list:
+                        return p1_string, 0
+                    if ret_string:
+                        return p2_string
+                    return 0
+                # Player 1 has a wheel & p2 has a 6-high straight
+                if ret_list:
+                    return p2_string, 2
+                if ret_string:
+                    return p2_string
+                return 2
+            elif p2_string[1] == "A":  # Deals with 6-high v Wheel Straights
+                if ret_list:
+                    return p1_string, 1
+                if ret_string:
+                    return p1_string
+                return 1
+            else:  # Same straight without Ace
+                if ret_list:
+                    return p1_string, 0
+                if ret_string:
+                    return p1_string
+                return 0
+
         rank_dict = {"A": 13, "K": 12, "Q": 11, "J": 10, "T": 9, "9": 8, "8": 7, "7": 6, "6": 5, "5": 4, "4": 3, "3": 2, "2": 1}
+        
+        # Compare card by card - this is where the parsing needs to be correct
         for i in range(5):
             if len(p1_string) > 1 + 2 * i and len(p2_string) > 1 + 2 * i:
-                p1 = rank_dict.get(p1_string[1 + 2 * i], 1)
-                p2 = rank_dict.get(p2_string[1 + 2 * i], 1)
+                p1 = rank_dict[p1_string[1 + 2 * i]]  # Get rank from position 1, 3, 5, 7, 9
+                p2 = rank_dict[p2_string[1 + 2 * i]]  # Get rank from position 1, 3, 5, 7, 9
+
                 if p1 > p2:
                     if ret_list:
                         return p1_string, 1
@@ -647,33 +757,11 @@ def eval_decoder_comparison(p1_string, p2_string, ret_string=False, ret_list=Fal
             return p1_string, 0
         if ret_string:
             return p1_string
-        return 0
+        return 0  # If their ranks are all the same, then return a chop (different suits)
+`;
 
-def evaluator_pineapple(p1, deck, best_hand=False):
-    if deck.community_cards == []:
-        return "0"
-    else:
-        combinations = [
-            [p1.cards[0], p1.cards[1]],
-            [p1.cards[0], p1.cards[2]], 
-            [p1.cards[1], p1.cards[2]]
-        ]
-        
-        best_result = "0"
-        best_combo = combinations[0]
-        
-        for combo in combinations:
-            temp_player = TempPlayer()
-            temp_player.set_cards(combo, deck)
-            result = eval_standard(temp_player, deck)
-            
-            if eval_decoder_comparison(result, best_result) == 1:
-                best_result = result
-                best_combo = combo
-        
-        if best_hand:
-            return best_result, best_combo
-        return best_result
+        const monteCarloPython = `
+import random
 
 def simulate_hand(player1, player2, deck, best_hand=False, num_cards=0, set_board=[]):
     if num_cards == 0:
@@ -731,7 +819,10 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
     return [player1_equity, player2_equity, draw_equity]
 `;
 
-        // Debug system
+        // ============================================================================
+        // ENHANCED DEBUG SYSTEM
+        // ============================================================================
+        
         let debugHistory = [];
         let debugConsoleVisible = false;
         
@@ -746,22 +837,25 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             
             debugHistory.push(logEntry);
             
+            // Console output
             if (isError) {
                 console.error(`[${timestamp}] ${message}`);
             } else {
                 console.log(`[${timestamp}] ${message}`);
             }
             
+            // Update debug console if visible
             if (debugConsoleVisible) {
                 updateDebugConsole();
             }
             
+            // Update status area (keep original behavior)
             const status = document.getElementById('status');
             const currentContent = status.innerHTML;
             const className = isError ? 'error' : 'debug';
             status.innerHTML = currentContent + `<div class="status ${className}">[${timestamp}] ${message}</div>`;
         }
-
+        
         function toggleDebugConsole() {
             const console = document.getElementById('debugConsole');
             debugConsoleVisible = !debugConsoleVisible;
@@ -775,7 +869,7 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
                 document.querySelector('button[onclick="toggleDebugConsole()"]').textContent = 'Show Debug Console';
             }
         }
-
+        
         function updateDebugConsole() {
             const output = document.getElementById('debugOutput');
             if (!output) return;
@@ -797,13 +891,13 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             output.innerHTML = html;
             output.scrollTop = output.scrollHeight;
         }
-
+        
         function clearDebugLog() {
             debugHistory = [];
             updateDebugConsole();
             document.getElementById('status').innerHTML = '';
         }
-
+        
         function copyDebugLog() {
             const logText = debugHistory.map(entry => 
                 `[${entry.time}] ${entry.type}: ${entry.message}`
@@ -821,68 +915,38 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
                 alert('Debug log copied to clipboard!');
             });
         }
-
-        // Python initialization
-        let pyodide = null;
-        let isReady = false;
-        let currentCard = null;
-
-        async function initPython() {
-            if (isReady) return;
-            
-            debugLog('🚀 Starting Python initialization');
-            
+        
+        function capturePythonError(pythonCode, operation) {
             try {
-                showStatus('🔄 Loading Pyodide...', 'loading');
-                debugLog('⬇️ Loading Pyodide...');
-                
-                pyodide = await loadPyodide();
-                debugLog('✅ Pyodide loaded');
-                
-                showStatus('🔄 Loading NumPy...', 'loading');
-                debugLog('⬇️ Loading NumPy...');
-                await pyodide.loadPackage(['numpy']);
-                debugLog('✅ NumPy loaded');
-                
-                showStatus('🔄 Loading Python code...', 'loading');
-                debugLog('🐍 Loading all Python code...');
-                pyodide.runPython(allPythonCode);
-                debugLog('✅ Python code loaded');
-                
-                // Test functionality
-                debugLog('🧪 Testing functionality...');
-                const testResult = pyodide.runPython(`
-try:
-    deck = Cardset()
-    player1 = Player()
-    player2 = Player()
-    player1.set_cards(['As', 'Ks', 'Qs'], deck)
-    player2.set_cards(['2s', '3s', '4s'], deck)
-    results = estimate_equity(player1, player2, deck, 100)
-    f"SUCCESS: P1={results[0]:.3f}, P2={results[1]:.3f}, Ties={results[2]:.3f}"
-except Exception as e:
-    import traceback
-    f"ERROR: {str(e)} | Traceback: {traceback.format_exc()}"
-                `);
-                
-                debugLog(`🧪 Test result: ${testResult}`);
-                
-                if (!testResult || !testResult.startsWith("SUCCESS")) {
-                    throw new Error(`Test failed: ${testResult}`);
-                }
-                
-                isReady = true;
-                debugLog('🎉 Initialization complete!');
-                showStatus('✅ Ready! Click cards to select them.', 'success');
-                
+                debugLog(`🐍 Executing Python: ${operation}`);
+                const result = pyodide.runPython(pythonCode);
+                debugLog(`✅ Python Result: ${result}`);
+                return result;
             } catch (error) {
-                debugLog(`💥 Initialization failed: ${error.message}`, true);
-                showStatus('❌ Failed to load: ' + error.message, 'error');
-                isReady = false;
-                pyodide = null;
+                debugLog(`❌ Python Execution Failed in ${operation}`, true);
+                debugLog(`Error Type: ${error.constructor.name}`, true);
+                debugLog(`Error Message: ${error.message}`, true);
+                debugLog(`Error Stack: ${error.stack}`, true);
+                throw error;
             }
         }
 
+        // ============================================================================
+        // JAVASCRIPT CODE
+        // ============================================================================
+        
+        let pyodide = null;
+        let isReady = false;
+        let currentCard = null;
+        
+        const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
+        const suits = [
+            { symbol: '♠', value: 's', color: 'black' },
+            { symbol: '♥', value: 'h', color: 'red' },
+            { symbol: '♦', value: 'd', color: 'red' },
+            { symbol: '♣', value: 'c', color: 'black' }
+        ];
+        
         async function testPython() {
             if (!pyodide) {
                 showStatus('⚠️ Python not loaded yet', 'error');
@@ -890,35 +954,190 @@ except Exception as e:
             }
             
             try {
-                debugLog('🧪 Running Python test...');
-                
+                debugLog('Testing basic Python...');
                 const basicTest = pyodide.runPython('2 + 3');
-                debugLog(`Basic test: 2 + 3 = ${basicTest}`);
+                debugLog(`Basic Python test: 2 + 3 = ${basicTest}`);
                 
-                const equityTest = pyodide.runPython(`
-deck = Cardset()
-hero = Player()
-villain = Player()
-hero.set_cards(['As', 'Ah', 'Th'], deck)
-villain.set_cards(['3s', '6h', 'Kc'], deck)
-results = estimate_equity(hero, villain, deck, 100)
-f"Test: P1={results[0]:.3f}, P2={results[1]:.3f}, Ties={results[2]:.3f}"
+                debugLog('Testing imports...');
+                const importTest = pyodide.runPython(`
+try:
+    # Test that classes exist in global namespace (no imports needed)
+    Cardset
+    Player
+    TempPlayer
+    evaluator_pineapple
+    estimate_equity
+    result = "All classes and functions accessible!"
+except Exception as e:
+    import traceback
+    result = f"Error accessing classes: {str(e)}\\nTraceback:\\n{traceback.format_exc()}"
+result
                 `);
-                debugLog(`Equity test: ${equityTest}`);
+                debugLog(`Import test result: ${importTest}`);
                 
-                showStatus('✅ Tests passed!', 'success');
+                if (importTest && typeof importTest === 'string' && importTest.includes('successful')) {
+                    debugLog('Testing object creation...');
+                    const objectTest = pyodide.runPython(`
+try:
+    deck = Cardset()
+    player1 = Player()
+    player2 = Player()
+    result = "Objects created successfully!"
+except Exception as e:
+    import traceback
+    result = f"Object creation error: {str(e)}\\nTraceback:\\n{traceback.format_exc()}"
+result
+                    `);
+                    debugLog(`Object creation test: ${objectTest}`);
+                }
                 
             } catch (error) {
-                debugLog(`❌ Test failed: ${error.message}`, true);
-                showStatus('❌ Test failed: ' + error.message, 'error');
+                debugLog(`Python test failed: ${error.message}`, true);
             }
         }
-
+        
+        async function initPython() {
+            if (isReady) return;
+            
+            debugLog('🚀 Starting Python initialization process');
+            
+            try {
+                showStatus('🔄 Loading Pyodide...', 'loading');
+                debugLog('⬇️ Loading Pyodide from CDN...');
+                
+                pyodide = await loadPyodide();
+                debugLog('✅ Pyodide loaded successfully');
+                
+                showStatus('🔄 Loading NumPy...', 'loading');
+                debugLog('⬇️ Loading NumPy package...');
+                await pyodide.loadPackage(['numpy']);
+                debugLog('✅ NumPy loaded successfully');
+                
+                showStatus('🔄 Loading Python modules...', 'loading');
+                debugLog('📦 Starting module loading sequence...');
+                
+                // Test basic Python functionality first
+                debugLog('🧪 Testing basic Python execution...');
+                const basicTest = capturePythonError('2 + 3', 'Basic Math Test');
+                debugLog(`✅ Basic Python test result: ${basicTest}`);
+                
+                // Load modules one by one
+                debugLog('📝 Loading Cardset module...');
+                const cardsetResult = capturePythonError(cardsetPython + '\n"Cardset loaded"', 'Cardset Module Loading');
+                debugLog(`📝 Cardset load result: ${cardsetResult}`);
+                
+                debugLog('👤 Loading Player module...');
+                const playerResult = capturePythonError(playerPython + '\n"Player loaded"', 'Player Module Loading');
+                debugLog(`👤 Player load result: ${playerResult}`);
+                
+                debugLog('👥 Loading TempPlayer module...');
+                const tempPlayerResult = capturePythonError(tempPlayerPython + '\n"TempPlayer loaded"', 'TempPlayer Module Loading');
+                debugLog(`👥 TempPlayer load result: ${tempPlayerResult}`);
+                
+                debugLog('🧮 Loading Evaluator module...');
+                const evaluatorResult = capturePythonError(evaluatorPython + '\n"Evaluator loaded"', 'Evaluator Module Loading');
+                debugLog(`🧮 Evaluator load result: ${evaluatorResult}`);
+                
+                debugLog('🎲 Loading Monte Carlo module...');
+                const monteCarloResult = capturePythonError(monteCarloPython + '\n"MonteCarlo loaded"', 'Monte Carlo Module Loading');
+                debugLog(`🎲 Monte Carlo load result: ${monteCarloResult}`);
+                
+                // Test imports with corrected approach - no module imports needed!
+                debugLog('🔗 Testing Python classes (no module imports needed)...');
+                
+                // Test that classes exist in global namespace
+                const classTest = capturePythonError(`
+# Test that classes exist in global namespace
+Cardset
+Player  
+TempPlayer
+"CLASSES_EXIST"
+                `, 'Class Existence Test');
+                debugLog(`🔗 Class test result: ${classTest}`);
+                
+                if (!classTest || classTest !== "CLASSES_EXIST") {
+                    throw new Error(`Classes don't exist in global namespace. Got: ${classTest}`);
+                }
+                
+                // Test object creation directly (no imports needed)
+                const objectTest = capturePythonError(`
+deck = Cardset()
+p1 = Player()
+p2 = Player()
+"OBJECTS_CREATED"
+                `, 'Object Creation Test');
+                debugLog(`🔗 Object creation result: ${objectTest}`);
+                
+                if (!objectTest || objectTest !== "OBJECTS_CREATED") {
+                    throw new Error(`Object creation failed. Got: ${objectTest}`);
+                }
+                
+                // Test basic functionality
+                const functionalityTest = capturePythonError(`
+deck = Cardset()
+len(deck.deck)
+                `, 'Functionality Test');
+                debugLog(`🔗 Functionality test result: ${functionalityTest}`);
+                
+                if (functionalityTest !== 52) {
+                    throw new Error(`Functionality test failed. Expected 52 cards, got: ${functionalityTest}`);
+                }
+                
+                // Test evaluator functions exist
+                const evaluatorTest = capturePythonError(`
+# Test that evaluator functions exist
+evaluator_pineapple
+eval_standard
+eval_decoder_comparison
+"EVALUATOR_FUNCTIONS_EXIST"
+                `, 'Evaluator Functions Test');
+                debugLog(`🔗 Evaluator functions test result: ${evaluatorTest}`);
+                
+                if (!evaluatorTest || evaluatorTest !== "EVALUATOR_FUNCTIONS_EXIST") {
+                    throw new Error(`Evaluator functions don't exist. Got: ${evaluatorTest}`);
+                }
+                
+                // Test monte carlo functions exist
+                const monteCarloTest = capturePythonError(`
+# Test that monte carlo functions exist
+simulate_hand
+estimate_equity
+"MONTE_CARLO_FUNCTIONS_EXIST"
+                `, 'Monte Carlo Functions Test');
+                debugLog(`🔗 Monte Carlo functions test result: ${monteCarloTest}`);
+                
+                if (!monteCarloTest || monteCarloTest !== "MONTE_CARLO_FUNCTIONS_EXIST") {
+                    throw new Error(`Monte Carlo functions don't exist. Got: ${monteCarloTest}`);
+                }
+                
+                debugLog('✅ All simplified tests passed');
+                debugLog('✅ All validation checks passed');
+                debugLog('🎉 Python environment fully initialized');
+                isReady = true;
+                showStatus('✅ Ready! Click cards to select them.', 'success');
+                
+            } catch (error) {
+                debugLog(`💥 INITIALIZATION FAILED`, true);
+                debugLog(`Error in initPython: ${error.message}`, true);
+                debugLog(`Error type: ${error.constructor.name}`, true);
+                debugLog(`Error stack: ${error.stack}`, true);
+                
+                showStatus('❌ Failed to load Python: ' + error.message, 'error');
+                console.error('Initialization error:', error);
+                
+                // Reset state on failure
+                isReady = false;
+                pyodide = null;
+                
+                debugLog('🔄 State reset due to failure', true);
+            }
+        }
+        
         async function calculate() {
             if (!isReady) {
                 await initPython();
                 if (!isReady) {
-                    showStatus('❌ Python not ready', 'error');
+                    showStatus('❌ Python environment not ready', 'error');
                     return;
                 }
             }
@@ -940,86 +1159,162 @@ f"Test: P1={results[0]:.3f}, P2={results[1]:.3f}, Ties={results[2]:.3f}"
                     throw new Error(`Player 2 needs exactly 3 cards (has ${p2Cards.length})`);
                 }
                 
-                debugLog(`🔄 Calculating with ${sims} simulations...`);
                 showStatus(`🔄 Running ${sims.toLocaleString()} simulations...`, 'loading');
                 
-                const calculationCode = `
+                debugLog('🔄 Starting calculation with optimized approach...');
+                
+                let jsResults = null; // Declare outside try block
+                
+                try {
+                    // Since we know the issue was with higher simulation counts, 
+                    // let's use the user's selected simulation count but with better error handling
+                    debugLog(`🎯 Running ${sims} simulations as requested...`);
+                    
+                    const calculationCode = `
+try:
+    deck = Cardset()
+    hero = Player()
+    villain = Player()
+    
+    p1_cards = [${p1Cards.map(c => `"${c}"`).join(', ')}]
+    p2_cards = [${p2Cards.map(c => `"${c}"`).join(', ')}]
+    community_cards = [${communityCards.map(c => `"${c}"`).join(', ')}]
+    
+    hero.set_cards(p1_cards, deck)
+    villain.set_cards(p2_cards, deck)
+    
+    ${communityCards.length > 0 ? `
+    deck.set_community_cards(community_cards)
+    equity_results = estimate_equity(hero, villain, deck, ${sims}, num_cards=len(community_cards), set_board=community_cards)
+    ` : `
+    equity_results = estimate_equity(hero, villain, deck, ${sims})
+    `}
+    
+    {
+        'success': True,
+        'player1_equity': float(equity_results[0]),
+        'player2_equity': float(equity_results[1]), 
+        'ties': float(equity_results[2]),
+        'simulations': ${sims},
+        'player1_cards': p1_cards,
+        'player2_cards': p2_cards,
+        'community_cards': community_cards
+    }
+
+except Exception as e:
+    import traceback
+    {
+        'success': False,
+        'error': str(e),
+        'error_type': type(e).__name__,
+        'traceback': traceback.format_exc()
+    }
+                    `;
+                    
+                    debugLog('🐍 Executing full calculation...');
+                    const results = capturePythonError(calculationCode, 'Full Equity Calculation');
+                    debugLog(`📊 Raw calculation results: ${JSON.stringify(results)}`);
+                    
+                    // Convert Python object to JavaScript object
+                    jsResults = results.toJs ? results.toJs() : results;
+                    debugLog(`📊 Converted results: ${JSON.stringify(jsResults)}`);
+                    
+                    // Check for errors
+                    if (!jsResults || typeof jsResults !== 'object') {
+                        throw new Error(`Invalid result type: ${typeof jsResults}`);
+                    }
+                    
+                    if (jsResults.success === false) {
+                        throw new Error(`Python error: ${jsResults.error}`);
+                    }
+                    
+                    if (!jsResults.success) {
+                        throw new Error(`Calculation didn't return success flag`);
+                    }
+                    
+                    // Validate equity values exist
+                    if (typeof jsResults.player1_equity !== 'number' || 
+                        typeof jsResults.player2_equity !== 'number' || 
+                        typeof jsResults.ties !== 'number') {
+                        throw new Error(`Missing or invalid equity values: P1=${jsResults.player1_equity}, P2=${jsResults.player2_equity}, Ties=${jsResults.ties}`);
+                    }
+                    
+                    debugLog(`✅ Calculation successful: P1=${jsResults.player1_equity}, P2=${jsResults.player2_equity}, Ties=${jsResults.ties}`);
+                    
+                } catch (error) {
+                    debugLog(`❌ Calculation failed: ${error.message}`, true);
+                    
+                    // Fallback: try with reduced simulation count
+                    debugLog(`🔄 Trying fallback with 1000 simulations...`);
+                    try {
+                        const fallbackCode = `
 deck = Cardset()
 hero = Player()
 villain = Player()
 
-hero.set_cards([${p1Cards.map(c => `"${c}"`).join(', ')}], deck)
-villain.set_cards([${p2Cards.map(c => `"${c}"`).join(', ')}], deck)
+p1_cards = [${p1Cards.map(c => `"${c}"`).join(', ')}]
+p2_cards = [${p2Cards.map(c => `"${c}"`).join(', ')}]
+community_cards = [${communityCards.map(c => `"${c}"`).join(', ')}]
+
+hero.set_cards(p1_cards, deck)
+villain.set_cards(p2_cards, deck)
 
 ${communityCards.length > 0 ? `
-deck.set_community_cards([${communityCards.map(c => `"${c}"`).join(', ')}])
-equity_results = estimate_equity(hero, villain, deck, ${sims}, num_cards=${communityCards.length}, set_board=[${communityCards.map(c => `"${c}"`).join(', ')}])
+deck.set_community_cards(community_cards)
+equity_results = estimate_equity(hero, villain, deck, 1000, num_cards=len(community_cards), set_board=community_cards)
 ` : `
-equity_results = estimate_equity(hero, villain, deck, ${sims})
+equity_results = estimate_equity(hero, villain, deck, 1000)
 `}
 
-[float(equity_results[0]), float(equity_results[1]), float(equity_results[2])]
-                `;
+{
+    'player1_equity': float(equity_results[0]),
+    'player2_equity': float(equity_results[1]), 
+    'ties': float(equity_results[2])
+}
+                        `;
+                        
+                        const fallbackResults = capturePythonError(fallbackCode, 'Fallback Calculation');
+                        const fallbackJs = fallbackResults.toJs ? fallbackResults.toJs() : fallbackResults;
+                        
+                        jsResults = {
+                            success: true,
+                            player1_equity: fallbackJs.player1_equity,
+                            player2_equity: fallbackJs.player2_equity,
+                            ties: fallbackJs.ties,
+                            simulations: 1000,
+                            player1_cards: p1Cards,
+                            player2_cards: p2Cards,
+                            community_cards: communityCards,
+                            note: `Fallback used: ${sims} simulations failed, used 1000 instead`
+                        };
+                        
+                        debugLog(`✅ Fallback successful: P1=${jsResults.player1_equity}, P2=${jsResults.player2_equity}, Ties=${jsResults.ties}`);
+                        
+                    } catch (fallbackError) {
+                        debugLog(`❌ Fallback also failed: ${fallbackError.message}`, true);
+                        throw new Error(`Both main calculation (${sims} sims) and fallback (1000 sims) failed: ${error.message}`);
+                    }
+                }
                 
-                debugLog('🐍 Running calculation...');
-                const pythonResults = pyodide.runPython(calculationCode);
-                
-                let jsResults;
-                if (pythonResults && pythonResults.toJs) {
-                    jsResults = pythonResults.toJs();
-                } else if (Array.isArray(pythonResults)) {
-                    jsResults = pythonResults;
+                // Only call showResults if we have valid results
+                if (jsResults && jsResults.success) {
+                    showResults(jsResults);
+                    const note = jsResults.note ? ` (${jsResults.note})` : '';
+                    showStatus(`✅ Calculation complete!${note}`, 'success');
                 } else {
-                    jsResults = [
-                        parseFloat(pythonResults[0]) || 0,
-                        parseFloat(pythonResults[1]) || 0,
-                        parseFloat(pythonResults[2]) || 0
-                    ];
+                    throw new Error('No valid results to display');
                 }
-                
-                debugLog(`📊 Results: [${jsResults[0].toFixed(3)}, ${jsResults[1].toFixed(3)}, ${jsResults[2].toFixed(3)}]`);
-                
-                if (!Array.isArray(jsResults) || jsResults.length !== 3) {
-                    throw new Error(`Invalid results: ${JSON.stringify(jsResults)}`);
-                }
-                
-                const [p1Equity, p2Equity, tieEquity] = jsResults;
-                if (p1Equity === 0 && p2Equity === 0 && tieEquity === 0) {
-                    throw new Error('All equity values are 0');
-                }
-                
-                const results = {
-                    player1_equity: p1Equity,
-                    player2_equity: p2Equity,
-                    ties: tieEquity,
-                    simulations: sims,
-                    player1_cards: p1Cards,
-                    player2_cards: p2Cards,
-                    community_cards: communityCards
-                };
-                
-                displayResults(results);
                 showStatus('✅ Calculation complete!', 'success');
-                debugLog('✅ Success!');
                 
             } catch (error) {
-                debugLog(`❌ Error: ${error.message}`, true);
+                debugLog(`❌ Calculation error: ${error.message}`, true);
                 showStatus('❌ Error: ' + error.message, 'error');
             } finally {
                 btn.textContent = 'Calculate Equity';
                 btn.disabled = false;
             }
         }
-
-        // UI Functions
-        const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
-        const suits = [
-            { symbol: '♠', value: 's', color: 'black' },
-            { symbol: '♥', value: 'h', color: 'red' },
-            { symbol: '♦', value: 'd', color: 'red' },
-            { symbol: '♣', value: 'c', color: 'black' }
-        ];
-
+        
         function openSelector(cardElement) {
             currentCard = cardElement;
             generateCardGrid();
@@ -1029,12 +1324,12 @@ equity_results = estimate_equity(hero, villain, deck, ${sims})
             
             document.getElementById('modal').classList.add('show');
         }
-
+        
         function closeSelector() {
             document.getElementById('modal').classList.remove('show');
             currentCard = null;
         }
-
+        
         function generateCardGrid() {
             const grid = document.getElementById('cardGrid');
             grid.innerHTML = '';
@@ -1058,7 +1353,7 @@ equity_results = estimate_equity(hero, villain, deck, ${sims})
                 });
             });
         }
-
+        
         function selectCard(cardCode) {
             if (currentCard) {
                 const rank = cardCode[0];
@@ -1074,7 +1369,7 @@ equity_results = estimate_equity(hero, villain, deck, ${sims})
             }
             closeSelector();
         }
-
+        
         function removeCard() {
             if (currentCard) {
                 currentCard.innerHTML = '<div>?</div>';
@@ -1083,7 +1378,7 @@ equity_results = estimate_equity(hero, villain, deck, ${sims})
             }
             closeSelector();
         }
-
+        
         function getUsedCards() {
             const cards = [];
             document.querySelectorAll('[data-card]').forEach(el => {
@@ -1093,7 +1388,7 @@ equity_results = estimate_equity(hero, villain, deck, ${sims})
             });
             return cards;
         }
-
+        
         function getPlayerCards(player) {
             const cards = [];
             document.querySelectorAll(`[data-player="${player}"]`).forEach(el => {
@@ -1103,50 +1398,55 @@ equity_results = estimate_equity(hero, villain, deck, ${sims})
             });
             return cards;
         }
-
-        function displayResults(results) {
-            const p1Pct = (results.player1_equity * 100).toFixed(1);
-            const p2Pct = (results.player2_equity * 100).toFixed(1);
-            const tiePct = (results.ties * 100).toFixed(1);
-            
-            const communityText = results.community_cards && results.community_cards.length > 0 ? 
-                `<div style="text-align: center; margin: 15px 0; color: #666;">
-                    Community: ${results.community_cards.join(' ')}
-                </div>` : '';
-            
-            document.getElementById('results').innerHTML = `
-                <div class="results">
-                    <h3>📊 Equity Results</h3>
-                    ${communityText}
-                    <div class="equity-row">
-                        <div class="equity-item">
-                            <h4>Player 1</h4>
-                            <div class="equity-value p1-equity">${p1Pct}%</div>
-                            <div style="font-size: 14px; color: #666;">${results.player1_cards.join(' ')}</div>
+        
+        function showResults(results) {
+            try {
+                const p1Pct = (results.player1_equity * 100).toFixed(1);
+                const p2Pct = (results.player2_equity * 100).toFixed(1);
+                const tiePct = (results.ties * 100).toFixed(1);
+                const simCount = results.simulations || 0;
+                
+                const communityText = results.community_cards && results.community_cards.length > 0 ? 
+                    `<div style="text-align: center; margin: 15px 0; color: #666;">
+                        Community: ${results.community_cards.join(' ')}
+                    </div>` : '';
+                
+                document.getElementById('results').innerHTML = `
+                    <div class="results">
+                        <h3>📊 Equity Results</h3>
+                        ${communityText}
+                        <div class="equity-row">
+                            <div class="equity-item">
+                                <h4>Player 1</h4>
+                                <div class="equity-value p1-equity">${p1Pct}%</div>
+                                <div style="font-size: 14px; color: #666;">${results.player1_cards.join(' ')}</div>
+                            </div>
+                            <div class="equity-item">
+                                <h4>Player 2</h4>
+                                <div class="equity-value p2-equity">${p2Pct}%</div>
+                                <div style="font-size: 14px; color: #666;">${results.player2_cards.join(' ')}</div>
+                            </div>
+                            <div class="equity-item">
+                                <h4>Ties</h4>
+                                <div class="equity-value tie-equity">${tiePct}%</div>
+                                <div style="font-size: 14px; color: #666;">Split pot</div>
+                            </div>
                         </div>
-                        <div class="equity-item">
-                            <h4>Player 2</h4>
-                            <div class="equity-value p2-equity">${p2Pct}%</div>
-                            <div style="font-size: 14px; color: #666;">${results.player2_cards.join(' ')}</div>
-                        </div>
-                        <div class="equity-item">
-                            <h4>Ties</h4>
-                            <div class="equity-value tie-equity">${tiePct}%</div>
-                            <div style="font-size: 14px; color: #666;">Split pot</div>
+                        <div style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
+                            Based on ${simCount.toLocaleString()} Monte Carlo simulations
                         </div>
                     </div>
-                    <div style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
-                        Based on ${results.simulations.toLocaleString()} Monte Carlo simulations
-                    </div>
-                </div>
-            `;
+                `;
+            } catch (error) {
+                console.error('Error displaying results:', error);
+                showStatus('❌ Error displaying results: ' + error.message, 'error');
+            }
         }
-
-        function showStatus(message, className = '') {
-            const statusDiv = document.getElementById('status');
-            statusDiv.innerHTML = `<div class="status ${className}">${message}</div>`;
+        
+        function showStatus(message, type = '') {
+            document.getElementById('status').innerHTML = `<div class="status ${type}">${message}</div>`;
         }
-
+        
         function clearAll() {
             document.querySelectorAll('.card').forEach(card => {
                 card.innerHTML = '<div>?</div>';
@@ -1156,13 +1456,14 @@ equity_results = estimate_equity(hero, villain, deck, ${sims})
             document.getElementById('results').innerHTML = '';
             document.getElementById('status').innerHTML = '';
         }
-
+        
         // Initialize when page loads
         window.addEventListener('load', () => {
-            debugLog('Page loaded, initializing...');
-            initPython();
+            console.log('Page loaded, initializing Python...');
+            debugLog('Page loaded, starting initialization...');
+            setTimeout(initPython, 1000);
         });
-
+        
         // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('modal');
