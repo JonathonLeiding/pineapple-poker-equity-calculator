@@ -1,4 +1,6 @@
-<!DOCTYPE html>
+<button class="btn-gray" onclick="copyDebugLog()">
+                    Copy Debug Log
+                </button><!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1050,6 +1052,24 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             document.getElementById('status').innerHTML = '';
         }
 
+        function copyDebugLog() {
+            const logText = debugHistory.map(entry => 
+                `[${entry.time}] ${entry.type}: ${entry.message}`
+            ).join('\n');
+            
+            navigator.clipboard.writeText(logText).then(() => {
+                alert('Debug log copied to clipboard!');
+            }).catch(() => {
+                const textArea = document.createElement('textarea');
+                textArea.value = logText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('Debug log copied to clipboard!');
+            });
+        }
+
         // ============================================================================
         // PYTHON INITIALIZATION - EMBEDDED APPROACH
         // ============================================================================
@@ -1077,24 +1097,44 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
                 pyodide.runPython(allPythonCode);
                 debugLog('✅ Python code loaded');
                 
-                // Test that everything works
+                // Test that everything works with better error handling
                 debugLog('🧪 Testing functionality...');
                 const testResult = pyodide.runPython(`
 try:
+    # Test basic classes exist
     deck = Cardset()
     player1 = Player()
     player2 = Player()
+    
+    # Test card setting
     player1.set_cards(['As', 'Ks', 'Qs'], deck)
     player2.set_cards(['2s', '3s', '4s'], deck)
+    
+    # Test equity calculation
     results = estimate_equity(player1, player2, deck, 100)
-    f"SUCCESS: P1={results[0]:.3f}, P2={results[1]:.3f}, Ties={results[2]:.3f}"
+    
+    # Return detailed success message
+    f"SUCCESS: P1={results[0]:.3f}, P2={results[1]:.3f}, Ties={results[2]:.3f}, Total={results[0]+results[1]+results[2]:.3f}"
+    
 except Exception as e:
-    f"ERROR: {str(e)}"
+    import traceback
+    error_details = traceback.format_exc()
+    f"ERROR: {str(e)} | Full traceback: {error_details}"
                 `);
                 
-                debugLog(`🧪 Test result: ${testResult}`);
+                debugLog(`🧪 Detailed test result: ${testResult}`);
+                debugLog(`🧪 Test result type: ${typeof testResult}`);
+                debugLog(`🧪 Test result length: ${testResult ? testResult.length : 'N/A'}`);
                 
-                if (!testResult || !testResult.startsWith("SUCCESS")) {
+                if (!testResult) {
+                    throw new Error(`Test returned null/undefined`);
+                }
+                
+                if (typeof testResult !== 'string') {
+                    throw new Error(`Test returned wrong type: ${typeof testResult}, value: ${testResult}`);
+                }
+                
+                if (!testResult.startsWith("SUCCESS")) {
                     throw new Error(`Test failed: ${testResult}`);
                 }
                 
