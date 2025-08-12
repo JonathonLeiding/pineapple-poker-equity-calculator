@@ -605,19 +605,24 @@
                         
                         let code = await response.text();
                         
-                        // Remove problematic imports that cause module loading issues
-                        if (file === 'temp_player.py') {
-                            code = code.replace(/^import player\s*$/m, '# import player # Removed for web deployment');
+                        // Debug what we're actually loading
+                        debugLog(`📄 File content preview: ${code.substring(0, 100)}...`);
+                        
+                        // Check if this file has imports
+                        if (code.includes('import player')) {
+                            debugLog(`⚠️ Found 'import player' in ${file}, removing it`);
+                            code = code.replace(/import player\s*\n?/g, '# import player removed\n');
                         }
-                        if (file === 'Cardset.py') {
-                            code = code.replace(/^import player\s*$/m, '# import player # Removed for web deployment');
-                        }
+                        
+                        // Debug the modified code
+                        debugLog(`📝 Modified code preview: ${code.substring(0, 100)}...`);
                         
                         pyodide.runPython(code);
                         debugLog(`✅ ${file} loaded successfully`);
                         
                     } catch (error) {
                         debugLog(`❌ Could not load ${file}: ${error.message}`, true);
+                        debugLog(`❌ Full error: ${error.stack}`, true);
                         throw error;
                     }
                 }
