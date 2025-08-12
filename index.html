@@ -583,13 +583,13 @@
                 await pyodide.loadPackage(["numpy"]);
                 debugLog('✅ NumPy loaded successfully');
                 
-                // Load your Python files from root directory
+                // Load your Python files in dependency order
                 const pythonFiles = [
-                    'Cardset.py',
-                    'player.py', 
-                    'temp_player.py',
-                    'evaluator.py',
-                    'monte_carlo.py'
+                    'player.py',        // Load this first (no dependencies)
+                    'temp_player.py',   // Load this second (might depend on player)
+                    'Cardset.py',       // Load this third (imports player)
+                    'evaluator.py',     // Load this fourth  
+                    'monte_carlo.py'    // Load this last (depends on others)
                 ];
                 
                 debugLog('📦 Starting module loading sequence...');
