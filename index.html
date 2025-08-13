@@ -808,13 +808,17 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
     player2_wins = 0
     ties = 0
     
+    # DEBUG: Check if this is pineapple
+    is_pineapple = len(player1.cards) == 3
+    print(f"DEBUG: Is pineapple? {is_pineapple}, P1 cards: {len(player1.cards)}, P2 cards: {len(player2.cards)}")
+    
     # ADDED: Track combination statistics for pineapple
     p1_combo_wins = [0, 0, 0]  # [combo1_wins, combo2_wins, combo3_wins]
     p2_combo_wins = [0, 0, 0]
     p1_combo_total = [0, 0, 0]  # Track which combo was best each time
     p2_combo_total = [0, 0, 0]
 
-    for _ in range(num_simulations):
+    for i in range(num_simulations):
         # FIXED: Each simulation gets fresh random cards
         if num_cards == 0:
             result = simulate_hand(player1, player2, deck)
@@ -822,35 +826,59 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             result = simulate_hand(player1, player2, deck, num_cards=num_cards, set_board=set_board)
 
         # ADDED: Track which combination won (for pineapple only)
-        if len(player1.cards) == 3:
+        if is_pineapple:
+            # DEBUG: Print first few iterations
+            if i < 3:
+                print(f"DEBUG: Simulation {i}, getting best hand info...")
+            
             # Get detailed results with best hand info
             p1_result, p1_best_combo = evaluator_pineapple(player1, deck, best_hand=True)
             p2_result, p2_best_combo = evaluator_pineapple(player2, deck, best_hand=True)
             
-            # Determine which combo index was used
-            combos = [
-                [player1.cards[0], player1.cards[1]],
-                [player1.cards[0], player1.cards[2]], 
-                [player1.cards[1], player1.cards[2]]
+            if i < 3:
+                print(f"DEBUG: P1 best combo: {p1_best_combo}, P2 best combo: {p2_best_combo}")
+            
+            # Define all possible combinations
+            p1_combos = [
+                [player1.cards[0], player1.cards[1]],  # combo 0
+                [player1.cards[0], player1.cards[2]],  # combo 1
+                [player1.cards[1], player1.cards[2]]   # combo 2
+            ]
+            p2_combos = [
+                [player2.cards[0], player2.cards[1]],  # combo 0
+                [player2.cards[0], player2.cards[2]],  # combo 1
+                [player2.cards[1], player2.cards[2]]   # combo 2
             ]
             
-            # Find which combo was best for each player
-            p1_combo_idx = 0
-            p2_combo_idx = 0
-            for i, combo in enumerate(combos):
-                if combo == p1_best_combo:
-                    p1_combo_idx = i
-                if combo == p2_best_combo:
-                    p2_combo_idx = i
+            # FIXED: Find which combo index was used (better comparison)
+            p1_combo_idx = -1
+            p2_combo_idx = -1
             
-            p1_combo_total[p1_combo_idx] += 1
-            p2_combo_total[p2_combo_idx] += 1
+            for idx, combo in enumerate(p1_combos):
+                if set(combo) == set(p1_best_combo):  # Compare as sets to ignore order
+                    p1_combo_idx = idx
+                    break
+                    
+            for idx, combo in enumerate(p2_combos):
+                if set(combo) == set(p2_best_combo):  # Compare as sets to ignore order
+                    p2_combo_idx = idx
+                    break
             
-            if result == 1:
-                p1_combo_wins[p1_combo_idx] += 1
-            elif result == 2:
-                p2_combo_wins[p2_combo_idx] += 1
+            if i < 3:
+                print(f"DEBUG: P1 combo index: {p1_combo_idx}, P2 combo index: {p2_combo_idx}")
+            
+            # Only track if we found valid indices
+            if p1_combo_idx >= 0:
+                p1_combo_total[p1_combo_idx] += 1
+                if result == 1:
+                    p1_combo_wins[p1_combo_idx] += 1
+                    
+            if p2_combo_idx >= 0:
+                p2_combo_total[p2_combo_idx] += 1
+                if result == 2:
+                    p2_combo_wins[p2_combo_idx] += 1
 
+        # Track overall wins
         if result == 1:
             player1_wins += 1
         elif result == 2:
@@ -862,10 +890,16 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
     player2_equity = player2_wins / num_simulations
     draw_equity = ties / num_simulations
 
-    # Return basic results + combo stats if pineapple
-    if len(player1.cards) == 3:
+    # DEBUG: Print combo stats
+    if is_pineapple:
+        print(f"DEBUG: P1 combo totals: {p1_combo_total}")
+        print(f"DEBUG: P1 combo wins: {p1_combo_wins}")
+        print(f"DEBUG: P2 combo totals: {p2_combo_total}")
+        print(f"DEBUG: P2 combo wins: {p2_combo_wins}")
+        print(f"DEBUG: Returning extended results with {len([player1_equity, player2_equity, draw_equity, p1_combo_wins, p1_combo_total, p2_combo_wins, p2_combo_total])} values")
         return [player1_equity, player2_equity, draw_equity, p1_combo_wins, p1_combo_total, p2_combo_wins, p2_combo_total]
     else:
+        print(f"DEBUG: Not pineapple, returning basic results with {len([player1_equity, player2_equity, draw_equity])} values")
         return [player1_equity, player2_equity, draw_equity]
 `;
 
