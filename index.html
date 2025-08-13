@@ -399,7 +399,7 @@
             <div id="status"></div>
             <div id="results"></div>
             
-            <!-- Enhanced Debug Console -->
+            <!-- Debug Console -->
             <div id="debugConsole" style="display: none; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 2px solid #dee2e6;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h4 style="margin: 0; color: #495057;">🐛 Debug Console</h4>
@@ -464,7 +464,7 @@
 
     <script>
         // ============================================================================
-        // EMBEDDED PYTHON CODE - DEFINED FIRST
+        // EMBEDDED PYTHON CODE
         // ============================================================================
         
         const cardsetPython = `
@@ -550,9 +550,7 @@ import itertools
 
 def evaluator_pineapple(p1, deck, best_hand=False):
     if deck.community_cards == []:
-        # FIXED: Handle pre-flop properly for best_hand=True
         if best_hand:
-            # For pre-flop, just return the first combo as default
             best_combo = [p1.cards[0], p1.cards[1]]
             return "0", best_combo
         return "0"
@@ -626,25 +624,18 @@ def eval_standard(player, deck):
     return "0" + "".join(kicker(full, 5, ret_list=True))
 
 def kicker(fin_list, num_kickers, ret_list=False):
-    """
-    Sorts list into rank order - FIXED to match original logic
-    """
     if len(fin_list) == 0:
         return [] if ret_list else ""
     
-    # Use the same rank mapping as your original code
     rank_dict = {"A": 13, "K": 12, "Q": 11, "J": 10, "T": 9, "9": 8, "8": 7, "7": 6, "6": 5, "5": 4, "4": 3, "3": 2, "2": 1}
     
-    # Create dictionary mapping each card to its rank value
     list_dict = {}
     for elt in fin_list:
         if isinstance(elt, str) and len(elt) >= 2:
-            list_dict[elt] = rank_dict.get(elt[0], 1)  # Use rank (first char) to get value
+            list_dict[elt] = rank_dict.get(elt[0], 1)
         else:
-            # Handle unexpected data
             raise ValueError(f"kicker() got invalid card format: {elt} (type: {type(elt)})")
     
-    # Sort by rank value (highest first)
     sorted_dict = sorted(list_dict.items(), key=lambda x: x[1], reverse=True)
     
     if ret_list:
@@ -653,7 +644,6 @@ def kicker(fin_list, num_kickers, ret_list=False):
         return "".join([sorted_dict[i][0] for i in range(min(num_kickers, len(sorted_dict)))])
 
 def rank_value(rank):
-    # Debug: Check what we're actually getting
     if not isinstance(rank, str):
         raise ValueError(f"rank_value got non-string: {rank} (type: {type(rank)})")
     if len(rank) != 1:
@@ -667,10 +657,6 @@ def rank_value(rank):
     return values[rank]
 
 def eval_decoder_comparison(p1_string, p2_string, ret_string=False, ret_list=False):
-    """
-    Takes the two player strings from the eval function and returns the winner
-    RESTORED to original logic from your evaluator.py
-    """
     if p1_string == p2_string:
         if ret_list:
             return p1_string, 0
@@ -694,7 +680,7 @@ def eval_decoder_comparison(p1_string, p2_string, ret_string=False, ret_list=Fal
             return p2_string
         return 2
     else:
-        if p1_hand == 4:  # Checks the second card to get the best straight since A's can be the best and worst straight
+        if p1_hand == 4:
             rank_dict = {"A": 13, "K": 12, "Q": 11, "J": 10, "T": 9, "9": 8, "8": 7, "7": 6, "6": 5, "5": 4, "4": 3, "3": 2, "2": 1}
             if rank_dict[p1_string[3]] > rank_dict[p2_string[3]]:
                 if ret_list:
@@ -708,26 +694,25 @@ def eval_decoder_comparison(p1_string, p2_string, ret_string=False, ret_list=Fal
                 if ret_string:
                     return p2_string
                 return 2
-            elif p1_string[1] == "A":  # Deals with 6-high v Wheel Straights
-                if p2_string[1] == "A":  # Both have wheel or broadway
+            elif p1_string[1] == "A":
+                if p2_string[1] == "A":
                     if ret_list:
                         return p1_string, 0
                     if ret_string:
                         return p2_string
                     return 0
-                # Player 1 has a wheel & p2 has a 6-high straight
                 if ret_list:
                     return p2_string, 2
                 if ret_string:
                     return p2_string
                 return 2
-            elif p2_string[1] == "A":  # Deals with 6-high v Wheel Straights
+            elif p2_string[1] == "A":
                 if ret_list:
                     return p1_string, 1
                 if ret_string:
                     return p1_string
                 return 1
-            else:  # Same straight without Ace
+            else:
                 if ret_list:
                     return p1_string, 0
                 if ret_string:
@@ -736,11 +721,10 @@ def eval_decoder_comparison(p1_string, p2_string, ret_string=False, ret_list=Fal
 
         rank_dict = {"A": 13, "K": 12, "Q": 11, "J": 10, "T": 9, "9": 8, "8": 7, "7": 6, "6": 5, "5": 4, "4": 3, "3": 2, "2": 1}
         
-        # Compare card by card - this is where the parsing needs to be correct
         for i in range(5):
             if len(p1_string) > 1 + 2 * i and len(p2_string) > 1 + 2 * i:
-                p1 = rank_dict[p1_string[1 + 2 * i]]  # Get rank from position 1, 3, 5, 7, 9
-                p2 = rank_dict[p2_string[1 + 2 * i]]  # Get rank from position 1, 3, 5, 7, 9
+                p1 = rank_dict[p1_string[1 + 2 * i]]
+                p2 = rank_dict[p2_string[1 + 2 * i]]
 
                 if p1 > p2:
                     if ret_list:
@@ -759,34 +743,26 @@ def eval_decoder_comparison(p1_string, p2_string, ret_string=False, ret_list=Fal
             return p1_string, 0
         if ret_string:
             return p1_string
-        return 0  # If their ranks are all the same, then return a chop (different suits)
+        return 0
 `;
 
         const monteCarloPython = `
 import random
 
 def simulate_hand_with_combos(player1, player2, deck, num_cards=0, set_board=[]):
-    """
-    FIXED: New function that returns both result and combo info
-    """
-    # Set up the board
     if num_cards == 0:
-        # Pre-flop simulation
         deck.clear_all()
         deck.add_block(player1.cards)
         deck.add_block(player2.cards)
         deck.sim_full_comm()
     else:
-        # Post-flop simulation
         deck.clear_all()
         deck.add_block(player1.cards)
         deck.add_block(player2.cards)
         
-        # Set the known community cards
         current_community = set_board.copy()
         deck.add_block(current_community)
         
-        # Simulate the remaining cards randomly
         if len(current_community) < 5:
             remaining_needed = 5 - len(current_community)
             available_cards = [card for card in deck.deck if card not in deck.blocked_cards]
@@ -794,19 +770,14 @@ def simulate_hand_with_combos(player1, player2, deck, num_cards=0, set_board=[])
             current_community.extend(random_cards)
             deck.add_block(random_cards)
         
-        # Set the complete 5-card board for this simulation
         deck.set_community_cards(current_community)
 
     is_pineapple = len(player1.cards) == 3
 
     if is_pineapple:
-        # Get best hand info for both players
         p1_result, p1_best_combo = evaluator_pineapple(player1, deck, best_hand=True)
         p2_result, p2_best_combo = evaluator_pineapple(player2, deck, best_hand=True)
-        
-        # Get the winner
         result = eval_decoder_comparison(p1_result, p2_result)
-        
         return result, p1_best_combo, p2_best_combo
     else:
         p1_result = eval_standard(player1, deck)
@@ -815,7 +786,6 @@ def simulate_hand_with_combos(player1, player2, deck, num_cards=0, set_board=[])
         return result, None, None
 
 def simulate_hand(player1, player2, deck, best_hand=False, num_cards=0, set_board=[]):
-    # Keep the old function for compatibility
     result, _, _ = simulate_hand_with_combos(player1, player2, deck, num_cards, set_board)
     return result
 
@@ -824,18 +794,15 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
     player2_wins = 0
     ties = 0
     
-    # DEBUG: Check if this is pineapple
     is_pineapple = len(player1.cards) == 3
     print(f"DEBUG: Is pineapple? {is_pineapple}, P1 cards: {len(player1.cards)}, P2 cards: {len(player2.cards)}")
     
-    # ADDED: Track combination statistics for pineapple
-    p1_combo_wins = [0, 0, 0]  # [combo1_wins, combo2_wins, combo3_wins]
+    p1_combo_wins = [0, 0, 0]
     p2_combo_wins = [0, 0, 0]
-    p1_combo_total = [0, 0, 0]  # Track which combo was best each time
+    p1_combo_total = [0, 0, 0]
     p2_combo_total = [0, 0, 0]
 
     for i in range(num_simulations):
-        # FIXED: Use the new function that returns combo info
         if is_pineapple:
             result, p1_best_combo, p2_best_combo = simulate_hand_with_combos(player1, player2, deck, num_cards, set_board)
         else:
@@ -843,42 +810,37 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             p1_best_combo = None
             p2_best_combo = None
 
-        # ADDED: Track which combination won (for pineapple only)
         if is_pineapple and p1_best_combo is not None and p2_best_combo is not None:
-            # DEBUG: Print first few iterations
             if i < 3:
                 print(f"DEBUG: Simulation {i}, P1 best combo: {p1_best_combo}, P2 best combo: {p2_best_combo}")
             
-            # Define all possible combinations
             p1_combos = [
-                [player1.cards[0], player1.cards[1]],  # combo 0
-                [player1.cards[0], player1.cards[2]],  # combo 1
-                [player1.cards[1], player1.cards[2]]   # combo 2
+                [player1.cards[0], player1.cards[1]],
+                [player1.cards[0], player1.cards[2]],
+                [player1.cards[1], player1.cards[2]]
             ]
             p2_combos = [
-                [player2.cards[0], player2.cards[1]],  # combo 0
-                [player2.cards[0], player2.cards[2]],  # combo 1
-                [player2.cards[1], player2.cards[2]]   # combo 2
+                [player2.cards[0], player2.cards[1]],
+                [player2.cards[0], player2.cards[2]],
+                [player2.cards[1], player2.cards[2]]
             ]
             
-            # FIXED: Find which combo index was used (better comparison)
             p1_combo_idx = -1
             p2_combo_idx = -1
             
             for idx, combo in enumerate(p1_combos):
-                if set(combo) == set(p1_best_combo):  # Compare as sets to ignore order
+                if set(combo) == set(p1_best_combo):
                     p1_combo_idx = idx
                     break
                     
             for idx, combo in enumerate(p2_combos):
-                if set(combo) == set(p2_best_combo):  # Compare as sets to ignore order
+                if set(combo) == set(p2_best_combo):
                     p2_combo_idx = idx
                     break
             
             if i < 3:
                 print(f"DEBUG: P1 combo index: {p1_combo_idx}, P2 combo index: {p2_combo_idx}")
             
-            # Only track if we found valid indices
             if p1_combo_idx >= 0:
                 p1_combo_total[p1_combo_idx] += 1
                 if result == 1:
@@ -889,7 +851,6 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
                 if result == 2:
                     p2_combo_wins[p2_combo_idx] += 1
 
-        # Track overall wins
         if result == 1:
             player1_wins += 1
         elif result == 2:
@@ -901,192 +862,20 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
     player2_equity = player2_wins / num_simulations
     draw_equity = ties / num_simulations
 
-    # DEBUG: Print combo stats
     if is_pineapple:
         print(f"DEBUG: P1 combo totals: {p1_combo_total}")
         print(f"DEBUG: P1 combo wins: {p1_combo_wins}")
         print(f"DEBUG: P2 combo totals: {p2_combo_total}")
         print(f"DEBUG: P2 combo wins: {p2_combo_wins}")
-        print(f"DEBUG: Returning extended results with {len([player1_equity, player2_equity, draw_equity, p1_combo_wins, p1_combo_total, p2_combo_wins, p2_combo_total])} values")
+        print(f"DEBUG: Returning extended results with 7 values")
         return [player1_equity, player2_equity, draw_equity, p1_combo_wins, p1_combo_total, p2_combo_wins, p2_combo_total]
     else:
-        print(f"DEBUG: Not pineapple, returning basic results with {len([player1_equity, player2_equity, draw_equity])} values")
-        return [player1_equity, player2_equity, draw_equity]
-`;, 0]  # [combo1_wins, combo2_wins, combo3_wins]
-    p2_combo_wins = [0, 0, 0]
-    p1_combo_total = [0, 0, 0]  # Track which combo was best each time
-    p2_combo_total = [0, 0, 0]
-
-    for i in range(num_simulations):
-        # FIXED: Use the new function that returns combo info
-        if is_pineapple:
-            result, p1_best_combo, p2_best_combo = simulate_hand_with_combos(player1, player2, deck, num_cards, set_board)
-        else:
-            result = simulate_hand(player1, player2, deck, num_cards=num_cards, set_board=set_board)
-            p1_best_combo = None
-            p2_best_combo = None
-
-        # ADDED: Track which combination won (for pineapple only)
-        if is_pineapple and p1_best_combo is not None and p2_best_combo is not None:
-            # DEBUG: Print first few iterations
-            if i < 3:
-                print(f"DEBUG: Simulation {i}, P1 best combo: {p1_best_combo}, P2 best combo: {p2_best_combo}")
-            
-            # Define all possible combinations
-            p1_combos = [
-                [player1.cards[0], player1.cards[1]],  # combo 0
-                [player1.cards[0], player1.cards[2]],  # combo 1
-                [player1.cards[1], player1.cards[2]]   # combo 2
-            ]
-            p2_combos = [
-                [player2.cards[0], player2.cards[1]],  # combo 0
-                [player2.cards[0], player2.cards[2]],  # combo 1
-                [player2.cards[1], player2.cards[2]]   # combo 2
-            ]
-            
-            # FIXED: Find which combo index was used (better comparison)
-            p1_combo_idx = -1
-            p2_combo_idx = -1
-            
-            for idx, combo in enumerate(p1_combos):
-                if set(combo) == set(p1_best_combo):  # Compare as sets to ignore order
-                    p1_combo_idx = idx
-                    break
-                    
-            for idx, combo in enumerate(p2_combos):
-                if set(combo) == set(p2_best_combo):  # Compare as sets to ignore order
-                    p2_combo_idx = idx
-                    break
-            
-            if i < 3:
-                print(f"DEBUG: P1 combo index: {p1_combo_idx}, P2 combo index: {p2_combo_idx}")
-            
-            # Only track if we found valid indices
-            if p1_combo_idx >= 0:
-                p1_combo_total[p1_combo_idx] += 1
-                if result == 1:
-                    p1_combo_wins[p1_combo_idx] += 1
-                    
-            if p2_combo_idx >= 0:
-                p2_combo_total[p2_combo_idx] += 1
-                if result == 2:
-                    p2_combo_wins[p2_combo_idx] += 1
-
-        # Track overall wins
-        if result == 1:
-            player1_wins += 1
-        elif result == 2:
-            player2_wins += 1
-        else:
-            ties += 1
-
-    player1_equity = player1_wins / num_simulations
-    player2_equity = player2_wins / num_simulations
-    draw_equity = ties / num_simulations
-
-    # DEBUG: Print combo stats
-    if is_pineapple:
-        print(f"DEBUG: P1 combo totals: {p1_combo_total}")
-        print(f"DEBUG: P1 combo wins: {p1_combo_wins}")
-        print(f"DEBUG: P2 combo totals: {p2_combo_total}")
-        print(f"DEBUG: P2 combo wins: {p2_combo_wins}")
-        print(f"DEBUG: Returning extended results with {len([player1_equity, player2_equity, draw_equity, p1_combo_wins, p1_combo_total, p2_combo_wins, p2_combo_total])} values")
-        return [player1_equity, player2_equity, draw_equity, p1_combo_wins, p1_combo_total, p2_combo_wins, p2_combo_total]
-    else:
-        print(f"DEBUG: Not pineapple, returning basic results with {len([player1_equity, player2_equity, draw_equity])} values")
-        return [player1_equity, player2_equity, draw_equity]
-`;, 0]  # [combo1_wins, combo2_wins, combo3_wins]
-    p2_combo_wins = [0, 0, 0]
-    p1_combo_total = [0, 0, 0]  # Track which combo was best each time
-    p2_combo_total = [0, 0, 0]
-
-    for i in range(num_simulations):
-        # FIXED: Each simulation gets fresh random cards
-        if num_cards == 0:
-            result = simulate_hand(player1, player2, deck)
-        else:
-            result = simulate_hand(player1, player2, deck, num_cards=num_cards, set_board=set_board)
-
-        # ADDED: Track which combination won (for pineapple only)
-        if is_pineapple:
-            # DEBUG: Print first few iterations
-            if i < 3:
-                print(f"DEBUG: Simulation {i}, getting best hand info...")
-            
-            # Get detailed results with best hand info
-            p1_result, p1_best_combo = evaluator_pineapple(player1, deck, best_hand=True)
-            p2_result, p2_best_combo = evaluator_pineapple(player2, deck, best_hand=True)
-            
-            if i < 3:
-                print(f"DEBUG: P1 best combo: {p1_best_combo}, P2 best combo: {p2_best_combo}")
-            
-            # Define all possible combinations
-            p1_combos = [
-                [player1.cards[0], player1.cards[1]],  # combo 0
-                [player1.cards[0], player1.cards[2]],  # combo 1
-                [player1.cards[1], player1.cards[2]]   # combo 2
-            ]
-            p2_combos = [
-                [player2.cards[0], player2.cards[1]],  # combo 0
-                [player2.cards[0], player2.cards[2]],  # combo 1
-                [player2.cards[1], player2.cards[2]]   # combo 2
-            ]
-            
-            # FIXED: Find which combo index was used (better comparison)
-            p1_combo_idx = -1
-            p2_combo_idx = -1
-            
-            for idx, combo in enumerate(p1_combos):
-                if set(combo) == set(p1_best_combo):  # Compare as sets to ignore order
-                    p1_combo_idx = idx
-                    break
-                    
-            for idx, combo in enumerate(p2_combos):
-                if set(combo) == set(p2_best_combo):  # Compare as sets to ignore order
-                    p2_combo_idx = idx
-                    break
-            
-            if i < 3:
-                print(f"DEBUG: P1 combo index: {p1_combo_idx}, P2 combo index: {p2_combo_idx}")
-            
-            # Only track if we found valid indices
-            if p1_combo_idx >= 0:
-                p1_combo_total[p1_combo_idx] += 1
-                if result == 1:
-                    p1_combo_wins[p1_combo_idx] += 1
-                    
-            if p2_combo_idx >= 0:
-                p2_combo_total[p2_combo_idx] += 1
-                if result == 2:
-                    p2_combo_wins[p2_combo_idx] += 1
-
-        # Track overall wins
-        if result == 1:
-            player1_wins += 1
-        elif result == 2:
-            player2_wins += 1
-        else:
-            ties += 1
-
-    player1_equity = player1_wins / num_simulations
-    player2_equity = player2_wins / num_simulations
-    draw_equity = ties / num_simulations
-
-    # DEBUG: Print combo stats
-    if is_pineapple:
-        print(f"DEBUG: P1 combo totals: {p1_combo_total}")
-        print(f"DEBUG: P1 combo wins: {p1_combo_wins}")
-        print(f"DEBUG: P2 combo totals: {p2_combo_total}")
-        print(f"DEBUG: P2 combo wins: {p2_combo_wins}")
-        print(f"DEBUG: Returning extended results with {len([player1_equity, player2_equity, draw_equity, p1_combo_wins, p1_combo_total, p2_combo_wins, p2_combo_total])} values")
-        return [player1_equity, player2_equity, draw_equity, p1_combo_wins, p1_combo_total, p2_combo_wins, p2_combo_total]
-    else:
-        print(f"DEBUG: Not pineapple, returning basic results with {len([player1_equity, player2_equity, draw_equity])} values")
+        print(f"DEBUG: Not pineapple, returning basic results with 3 values")
         return [player1_equity, player2_equity, draw_equity]
 `;
 
         // ============================================================================
-        // ENHANCED DEBUG SYSTEM
+        // DEBUG SYSTEM
         // ============================================================================
         
         let debugHistory = [];
@@ -1103,19 +892,16 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             
             debugHistory.push(logEntry);
             
-            // Console output
             if (isError) {
                 console.error(`[${timestamp}] ${message}`);
             } else {
                 console.log(`[${timestamp}] ${message}`);
             }
             
-            // Update debug console if visible
             if (debugConsoleVisible) {
                 updateDebugConsole();
             }
             
-            // Update status area (keep original behavior)
             const status = document.getElementById('status');
             const currentContent = status.innerHTML;
             const className = isError ? 'error' : 'debug';
@@ -1198,7 +984,7 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
         }
 
         // ============================================================================
-        // JAVASCRIPT CODE
+        // MAIN JAVASCRIPT
         // ============================================================================
         
         let pyodide = null;
@@ -1212,55 +998,6 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
             { symbol: '♦', value: 'd', color: 'red' },
             { symbol: '♣', value: 'c', color: 'black' }
         ];
-        
-        async function testPython() {
-            if (!pyodide) {
-                showStatus('⚠️ Python not loaded yet', 'error');
-                return;
-            }
-            
-            try {
-                debugLog('Testing basic Python...');
-                const basicTest = pyodide.runPython('2 + 3');
-                debugLog(`Basic Python test: 2 + 3 = ${basicTest}`);
-                
-                debugLog('Testing imports...');
-                const importTest = pyodide.runPython(`
-try:
-    # Test that classes exist in global namespace (no imports needed)
-    Cardset
-    Player
-    TempPlayer
-    evaluator_pineapple
-    estimate_equity
-    result = "All classes and functions accessible!"
-except Exception as e:
-    import traceback
-    result = f"Error accessing classes: {str(e)}\\nTraceback:\\n{traceback.format_exc()}"
-result
-                `);
-                debugLog(`Import test result: ${importTest}`);
-                
-                if (importTest && typeof importTest === 'string' && importTest.includes('successful')) {
-                    debugLog('Testing object creation...');
-                    const objectTest = pyodide.runPython(`
-try:
-    deck = Cardset()
-    player1 = Player()
-    player2 = Player()
-    result = "Objects created successfully!"
-except Exception as e:
-    import traceback
-    result = f"Object creation error: {str(e)}\\nTraceback:\\n{traceback.format_exc()}"
-result
-                    `);
-                    debugLog(`Object creation test: ${objectTest}`);
-                }
-                
-            } catch (error) {
-                debugLog(`Python test failed: ${error.message}`, true);
-            }
-        }
         
         async function initPython() {
             if (isReady) return;
@@ -1282,12 +1019,10 @@ result
                 showStatus('🔄 Loading Python modules...', 'loading');
                 debugLog('📦 Starting module loading sequence...');
                 
-                // Test basic Python functionality first
                 debugLog('🧪 Testing basic Python execution...');
                 const basicTest = capturePythonError('2 + 3', 'Basic Math Test');
                 debugLog(`✅ Basic Python test result: ${basicTest}`);
                 
-                // Load modules one by one
                 debugLog('📝 Loading Cardset module...');
                 const cardsetResult = capturePythonError(cardsetPython + '\n"Cardset loaded"', 'Cardset Module Loading');
                 debugLog(`📝 Cardset load result: ${cardsetResult}`);
@@ -1308,12 +1043,9 @@ result
                 const monteCarloResult = capturePythonError(monteCarloPython + '\n"MonteCarlo loaded"', 'Monte Carlo Module Loading');
                 debugLog(`🎲 Monte Carlo load result: ${monteCarloResult}`);
                 
-                // Test imports with corrected approach - no module imports needed!
-                debugLog('🔗 Testing Python classes (no module imports needed)...');
+                debugLog('🔗 Testing Python classes...');
                 
-                // Test that classes exist in global namespace
                 const classTest = capturePythonError(`
-# Test that classes exist in global namespace
 Cardset
 Player  
 TempPlayer
@@ -1321,11 +1053,6 @@ TempPlayer
                 `, 'Class Existence Test');
                 debugLog(`🔗 Class test result: ${classTest}`);
                 
-                if (!classTest || classTest !== "CLASSES_EXIST") {
-                    throw new Error(`Classes don't exist in global namespace. Got: ${classTest}`);
-                }
-                
-                // Test object creation directly (no imports needed)
                 const objectTest = capturePythonError(`
 deck = Cardset()
 p1 = Player()
@@ -1334,24 +1061,13 @@ p2 = Player()
                 `, 'Object Creation Test');
                 debugLog(`🔗 Object creation result: ${objectTest}`);
                 
-                if (!objectTest || objectTest !== "OBJECTS_CREATED") {
-                    throw new Error(`Object creation failed. Got: ${objectTest}`);
-                }
-                
-                // Test basic functionality
                 const functionalityTest = capturePythonError(`
 deck = Cardset()
 len(deck.deck)
                 `, 'Functionality Test');
                 debugLog(`🔗 Functionality test result: ${functionalityTest}`);
                 
-                if (functionalityTest !== 52) {
-                    throw new Error(`Functionality test failed. Expected 52 cards, got: ${functionalityTest}`);
-                }
-                
-                // Test evaluator functions exist
                 const evaluatorTest = capturePythonError(`
-# Test that evaluator functions exist
 evaluator_pineapple
 eval_standard
 eval_decoder_comparison
@@ -1359,43 +1075,23 @@ eval_decoder_comparison
                 `, 'Evaluator Functions Test');
                 debugLog(`🔗 Evaluator functions test result: ${evaluatorTest}`);
                 
-                if (!evaluatorTest || evaluatorTest !== "EVALUATOR_FUNCTIONS_EXIST") {
-                    throw new Error(`Evaluator functions don't exist. Got: ${evaluatorTest}`);
-                }
-                
-                // Test monte carlo functions exist
                 const monteCarloTest = capturePythonError(`
-# Test that monte carlo functions exist
 simulate_hand
 estimate_equity
 "MONTE_CARLO_FUNCTIONS_EXIST"
                 `, 'Monte Carlo Functions Test');
                 debugLog(`🔗 Monte Carlo functions test result: ${monteCarloTest}`);
                 
-                if (!monteCarloTest || monteCarloTest !== "MONTE_CARLO_FUNCTIONS_EXIST") {
-                    throw new Error(`Monte Carlo functions don't exist. Got: ${monteCarloTest}`);
-                }
-                
-                debugLog('✅ All simplified tests passed');
-                debugLog('✅ All validation checks passed');
+                debugLog('✅ All tests passed');
                 debugLog('🎉 Python environment fully initialized');
                 isReady = true;
                 showStatus('✅ Ready! Click cards to select them.', 'success');
                 
             } catch (error) {
-                debugLog(`💥 INITIALIZATION FAILED`, true);
-                debugLog(`Error in initPython: ${error.message}`, true);
-                debugLog(`Error type: ${error.constructor.name}`, true);
-                debugLog(`Error stack: ${error.stack}`, true);
-                
+                debugLog(`💥 INITIALIZATION FAILED: ${error.message}`, true);
                 showStatus('❌ Failed to load Python: ' + error.message, 'error');
-                console.error('Initialization error:', error);
-                
-                // Reset state on failure
                 isReady = false;
                 pyodide = null;
-                
-                debugLog('🔄 State reset due to failure', true);
             }
         }
         
@@ -1425,18 +1121,13 @@ estimate_equity
                     throw new Error(`Player 2 needs exactly 3 cards (has ${p2Cards.length})`);
                 }
                 
-                // CAP AT 5000 FOR BETTER RELIABILITY
                 const maxSims = Math.min(sims, 5000);
                 showStatus(`🔄 Running ${maxSims.toLocaleString()} simulations...`, 'loading');
                 
-                debugLog('🔄 Starting calculation with optimized approach...');
-                debugLog(`🎯 Running ${maxSims} simulations (capped for browser performance)...`);
+                debugLog('🔄 Starting calculation...');
+                debugLog(`🎯 Running ${maxSims} simulations`);
                 
-                let jsResults = null;
-                
-                try {
-                    // FIXED: Return individual values instead of dictionary
-                    const calculationCode = `
+                const calculationCode = `
 deck = Cardset()
 hero = Player()
 villain = Player()
@@ -1455,112 +1146,43 @@ equity_results = estimate_equity(hero, villain, deck, ${maxSims}, num_cards=len(
 equity_results = estimate_equity(hero, villain, deck, ${maxSims})
 `}
 
-# Return as list instead of dict - this should work better
-[float(equity_results[0]), float(equity_results[1]), float(equity_results[2])]
-                    `;
-                    
-                    debugLog('🐍 Executing full calculation...');
-                    const pythonResults = capturePythonError(calculationCode, 'Full Equity Calculation');
-                    debugLog(`📊 Raw calculation results: ${JSON.stringify(pythonResults)}`);
-                    
-                    // Parse as array
-                    let resultArray = pythonResults;
-                    if (pythonResults && pythonResults.toJs) {
-                        resultArray = pythonResults.toJs();
-                    }
-                    
-                    if (Array.isArray(resultArray) && resultArray.length >= 3) {
-                        jsResults = {
-                            player1_equity: parseFloat(resultArray[0]),
-                            player2_equity: parseFloat(resultArray[1]),
-                            ties: parseFloat(resultArray[2]),
-                            simulations: maxSims,
-                            player1_cards: p1Cards,
-                            player2_cards: p2Cards,
-                            community_cards: communityCards
-                        };
-                        
-                        // ADDED: Parse combination statistics if available
-                        if (resultArray.length === 7) {
-                            jsResults.p1_combo_wins = resultArray[3];
-                            jsResults.p1_combo_total = resultArray[4];
-                            jsResults.p2_combo_wins = resultArray[5];
-                            jsResults.p2_combo_total = resultArray[6];
-                        }
-                        
-                        debugLog(`✅ Main calculation successful: P1=${jsResults.player1_equity}, P2=${jsResults.player2_equity}, Ties=${jsResults.ties}`);
-                    } else {
-                        throw new Error(`Expected array of 3+ values, got: ${JSON.stringify(resultArray)}`);
-                    }
-                    
-                } catch (error) {
-                    debugLog(`❌ Calculation failed: ${error.message}`, true);
-                    
-                    // FALLBACK: Use hardcoded 1000 simulation calculation  
-                    debugLog(`🔄 Trying fallback with 1000 simulations...`);
-                    
-                    const fallbackCode = `
-deck = Cardset()
-hero = Player()
-villain = Player()
-
-p1_cards = [${p1Cards.map(c => `"${c}"`).join(', ')}]
-p2_cards = [${p2Cards.map(c => `"${c}"`).join(', ')}]
-community_cards = [${communityCards.map(c => `"${c}"`).join(', ')}]
-
-hero.set_cards(p1_cards, deck)
-villain.set_cards(p2_cards, deck)
-
-${communityCards.length > 0 ? `
-deck.set_community_cards(community_cards)
-equity_results = estimate_equity(hero, villain, deck, 1000, num_cards=len(community_cards), set_board=community_cards)
-` : `
-equity_results = estimate_equity(hero, villain, deck, 1000)
-`}
-
-# Return as list for easier parsing
-[float(equity_results[0]), float(equity_results[1]), float(equity_results[2])]
-                    `;
-                    
-                    const fallbackResults = capturePythonError(fallbackCode, 'Fallback Calculation');
-                    debugLog(`📊 Fallback Python result: ${JSON.stringify(fallbackResults)}`);
-                    
-                    // Parse fallback as array
-                    let fallbackArray = fallbackResults;
-                    if (fallbackResults && fallbackResults.toJs) {
-                        fallbackArray = fallbackResults.toJs();
-                    }
-                    
-                    if (Array.isArray(fallbackArray) && fallbackArray.length === 3) {
-                        jsResults = {
-                            player1_equity: parseFloat(fallbackArray[0]),
-                            player2_equity: parseFloat(fallbackArray[1]),
-                            ties: parseFloat(fallbackArray[2]),
-                            simulations: 1000,
-                            player1_cards: p1Cards,
-                            player2_cards: p2Cards,
-                            community_cards: communityCards,
-                            note: `Fallback used: ${sims} simulations failed, used 1000 instead`
-                        };
-                        
-                        debugLog(`✅ Fallback successful: P1=${jsResults.player1_equity}, P2=${jsResults.player2_equity}, Ties=${jsResults.ties}`);
-                    } else {
-                        throw new Error(`Fallback also failed: Expected array, got ${JSON.stringify(fallbackArray)}`);
-                    }
+equity_results
+                `;
+                
+                debugLog('🐍 Executing calculation...');
+                const pythonResults = capturePythonError(calculationCode, 'Equity Calculation');
+                debugLog(`📊 Python returned: ${JSON.stringify(pythonResults)}`);
+                
+                let resultArray = pythonResults;
+                if (pythonResults && pythonResults.toJs) {
+                    resultArray = pythonResults.toJs();
                 }
                 
-                // Final validation
-                if (!jsResults || 
-                    isNaN(jsResults.player1_equity) || 
-                    isNaN(jsResults.player2_equity) || 
-                    isNaN(jsResults.ties)) {
-                    throw new Error(`Invalid final results: P1=${jsResults?.player1_equity}, P2=${jsResults?.player2_equity}, Ties=${jsResults?.ties}`);
+                if (Array.isArray(resultArray) && resultArray.length >= 3) {
+                    const jsResults = {
+                        player1_equity: parseFloat(resultArray[0]),
+                        player2_equity: parseFloat(resultArray[1]),
+                        ties: parseFloat(resultArray[2]),
+                        simulations: maxSims,
+                        player1_cards: p1Cards,
+                        player2_cards: p2Cards,
+                        community_cards: communityCards
+                    };
+                    
+                    if (resultArray.length === 7) {
+                        jsResults.p1_combo_wins = resultArray[3];
+                        jsResults.p1_combo_total = resultArray[4];
+                        jsResults.p2_combo_wins = resultArray[5];
+                        jsResults.p2_combo_total = resultArray[6];
+                        debugLog(`📊 Combo data included`);
+                    }
+                    
+                    showResults(jsResults);
+                    showStatus('✅ Calculation complete!', 'success');
+                    debugLog(`✅ Calculation successful: P1=${jsResults.player1_equity}, P2=${jsResults.player2_equity}, Ties=${jsResults.ties}`);
+                } else {
+                    throw new Error(`Invalid results: ${JSON.stringify(resultArray)}`);
                 }
-                
-                // Display results
-                showResults(jsResults);
-                const note = jsResults.note ? ` (${jsResults.note})` : '';
-                showStatus(`✅ Calculation complete!${note}`, 'success');
                 
             } catch (error) {
                 debugLog(`❌ Calculation error: ${error.message}`, true);
@@ -1667,7 +1289,6 @@ equity_results = estimate_equity(hero, villain, deck, 1000)
                         Community: ${results.community_cards.join(' ')}
                     </div>` : '';
                 
-                // ADDED: Combination breakdown for pineapple hands
                 let comboBreakdown = '';
                 if (results.p1_combo_wins && results.p1_combo_total) {
                     const p1Combos = [
