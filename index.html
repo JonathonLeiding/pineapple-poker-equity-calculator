@@ -149,8 +149,29 @@
         }
         
         .btn-green:disabled {
-            background: #6c757d;
+            background: #dc3545;
             cursor: not-allowed;
+            position: relative;
+        }
+        
+        .btn-green:disabled::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 16px;
+            height: 16px;
+            margin-left: -8px;
+            margin-top: -8px;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
         .status {
@@ -749,6 +770,8 @@ def straight_check(full_list):
                 
                 # Check if it's a wheel straight flush
                 if combo_str in straight_flushes:
+                                    # Check if it's a wheel straight flush
+                if combo_str in straight_flushes:
                     current_rank = 8  # Straight flush rank
                     current_result = "8" + wheel_representation
                 else:
@@ -1231,6 +1254,7 @@ f"Equity test: P1={results[0]:.3f}, P2={results[1]:.3f}, Ties={results[2]:.3f}"
             const btn = document.getElementById('calcBtn');
             btn.textContent = 'Calculating...';
             btn.disabled = true;
+            btn.style.color = 'transparent'; // Hide text to show spinner
             
             try {
                 const p1Cards = getPlayerCards('1');
@@ -1322,6 +1346,7 @@ equity_results
             } finally {
                 btn.textContent = 'Calculate Equity';
                 btn.disabled = false;
+                btn.style.color = ''; // Reset text color
             }
         }
         
@@ -1450,6 +1475,18 @@ equity_results
                                         </div>`;
                                     }).join('')}
                                 </div>
+                                <div style="flex: 1;">
+                                    <h5 style="color: #dc3545; margin-bottom: 10px;">Player 2 Best Combos:</h5>
+                                    ${p2Combos.map((combo, i) => {
+                                        const wins = results.p2_combo_wins[i] || 0;
+                                        const total = results.p2_combo_total[i] || 1;
+                                        const winRate = total > 0 ? ((wins / total) * 100).toFixed(1) : '0.0';
+                                        const usage = ((total / simCount) * 100).toFixed(1);
+                                        return `<div style="font-size: 13px; margin-bottom: 5px;">
+                                            <strong>${combo}</strong>: ${usage}% used, ${winRate}% won when used
+                                        </div>`;
+                                    }).join('')}
+                                </div>
                             </div>
                         </div>
                     `;
@@ -1516,6 +1553,17 @@ equity_results
                 closeSelector();
             }
         }
+        
+        // Expose functions to global scope for HTML onclick handlers
+        window.calculate = calculate;
+        window.clearAll = clearAll;
+        window.openSelector = openSelector;
+        window.closeSelector = closeSelector;
+        window.selectCard = selectCard;
+        window.removeCard = removeCard;
+        window.toggleDebugConsole = toggleDebugConsole;
+        window.clearDebugLog = clearDebugLog;
+        window.copyDebugLog = copyDebugLog;
     </script>
 </body>
 </html>
