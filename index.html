@@ -147,26 +147,27 @@
         .btn-green:hover {
             background: #218838;
         }
-        
+
         .btn-green:disabled {
             background: #dc3545;
             cursor: not-allowed;
             position: relative;
+            color: white !important;
         }
-        
+
         .btn-green:disabled::after {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            width: 16px;
-            height: 16px;
-            margin-left: -8px;
-            margin-top: -8px;
-            border: 2px solid transparent;
-            border-top: 2px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+             content: '';
+             position: absolute;
+             left: 50%;
+             top: 50%;
+             width: 16px;
+             height: 16px;
+             margin-left: -8px;
+             margin-top: -8px;
+             border: 2px solid transparent;
+             border-top: 2px solid white;
+             border-radius: 50%;
+             animation: spin 1s linear infinite;
         }
         
         @keyframes spin {
@@ -1039,23 +1040,26 @@ def estimate_equity(player1, player2, deck, num_simulations, num_cards=0, set_bo
                 isError: isError,
                 type: isError ? 'ERROR' : 'INFO'
             };
-            
+
             debugHistory.push(logEntry);
-            
+
             if (isError) {
                 console.error(`[${timestamp}] ${message}`);
             } else {
                 console.log(`[${timestamp}] ${message}`);
             }
-            
+
             if (debugConsoleVisible) {
                 updateDebugConsole();
             }
-            
-            const status = document.getElementById('status');
-            const currentContent = status.innerHTML;
-            const className = isError ? 'error' : 'debug';
-            status.innerHTML = currentContent + `<div class="status ${className}">[${timestamp}] ${message}</div>`;
+
+            // Only show debug messages in status if they're errors
+            if (isError) {
+                const status = document.getElementById('status');
+                const currentContent = status.innerHTML;
+                const className = 'error';
+                status.innerHTML = currentContent + `<div class="status ${className}">[${timestamp}] ${message}</div>`;
+            }
         }
         
         function toggleDebugConsole() {
@@ -1252,7 +1256,7 @@ f"Equity test: P1={results[0]:.3f}, P2={results[1]:.3f}, Ties={results[2]:.3f}"
             const btn = document.getElementById('calcBtn');
             btn.textContent = 'Calculating...';
             btn.disabled = true;
-            btn.style.color = 'transparent'; // Hide text to show spinner
+            // Don't Hide text, let css handle the spinner'
             
             try {
                 const p1Cards = getPlayerCards('1');
@@ -1344,7 +1348,7 @@ equity_results
             } finally {
                 btn.textContent = 'Calculate Equity';
                 btn.disabled = false;
-                btn.style.color = ''; // Reset text color
+                // Text Color handled by css
             }
         }
         
