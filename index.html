@@ -464,7 +464,7 @@
 
     <script>
         // ============================================================================
-        // EMBEDDED PYTHON CODE
+        // EMBEDDED PYTHON CODE - FULLY CORRECTED VERSION
         // ============================================================================
         
         const cardsetPython = `
@@ -480,7 +480,7 @@ class Cardset:
                      "5s", "5c", "5d", "5h", "4s", "4c", "4d", "4h", "3s", "3c", "3d", "3h",
                      "2s", "2c", "2d", "2h")
         self.blocked_cards = []
-        self.community_cards = set_comm
+        self.community_cards = set_comm[:]
 
     def add_block(self, card_list):
         for card in card_list:
@@ -495,7 +495,7 @@ class Cardset:
         self.blocked_cards = []
 
     def set_community_cards(self, card_list):
-        self.community_cards = card_list
+        self.community_cards = card_list[:]
 
     def add_community_cards(self, card_list):
         for card in card_list:
@@ -520,6 +520,7 @@ class Player:
         self.cards = []
 
     def set_cards(self, card_list, deck):
+        self.cards = []  # Clear existing cards
         temp = []
         for card in card_list:
             if card in deck.blocked_cards:
@@ -541,6 +542,7 @@ class TempPlayer:
         self.cards = []
 
     def set_cards(self, card_list, deck):
+        self.cards = []  # Clear existing cards
         for card in card_list:
             self.cards.append(card)
 `;
@@ -549,39 +551,51 @@ class TempPlayer:
 import itertools
 
 def evaluator_pineapple(p1, deck, best_hand=False):
-    if deck.community_cards == []:
-        if best_hand:
-            best_combo = [p1.cards[0], p1.cards[1]]
-            return "0", best_combo
-        return "0"
-    else:
-        combinations = [
-            [p1.cards[0], p1.cards[1]],
-            [p1.cards[0], p1.cards[2]], 
-            [p1.cards[1], p1.cards[2]]
-        ]
+    """Evaluates the best pineapple hand from 3 cards"""
+    if not deck.community_cards:
+        # Pre-flop evaluation - check for pairs
+        ranks = [card[0] for card in p1.cards]
+        if ranks[0] == ranks[1] or ranks[0] == ranks[2]:
+            return ("1" + ranks[0], [p1.cards[0], p1.cards[1]]) if best_hand else "1" + ranks[0]
+        elif ranks[1] == ranks[2]:
+            return ("1" + ranks[1], [p1.cards[1], p1.cards[2]]) if best_hand else "1" + ranks[1]
+        else:
+            highest_card = kicker([p1.cards[0]], 1)
+            return ("0" + highest_card, [p1.cards[0], p1.cards[1]]) if best_hand else "0" + highest_card
+    
+    # Post-flop evaluation - test all three 2-card combinations
+    combinations = [
+        [p1.cards[0], p1.cards[1]],
+        [p1.cards[0], p1.cards[2]], 
+        [p1.cards[1], p1.cards[2]]
+    ]
+    
+    best_result = "0"
+    best_combo = combinations[0]
+    
+    for combo in combinations:
+        temp_player = TempPlayer()
+        temp_player.set_cards(combo, deck)
+        result = eval_standard(temp_player, deck)
         
-        best_result = "0"
-        best_combo = combinations[0]
-        
-        for combo in combinations:
-            temp_player = TempPlayer()
-            temp_player.set_cards(combo, deck)
-            result = eval_standard(temp_player, deck)
-            
-            if eval_decoder_comparison(result, best_result) == 1:
-                best_result = result
-                best_combo = combo
-        
-        if best_hand:
-            return best_result, best_combo
-        return best_result
+        if eval_decoder_comparison(result, best_result) == 1:
+            best_result = result
+            best_combo = combo
+    
+    return (best_result, best_combo) if best_hand else best_result
 
 def eval_standard(player, deck):
-    full = []
-    full.extend(player.cards)
-    full.extend(deck.community_cards)
+    """Complete poker hand evaluator with proper straight detection"""
+    # Combine all cards
+    full = player.cards + deck.community_cards
     
+    if len(full) < 5:
+        raise ValueError("Need at least 5 cards to evaluate")
+    
+    # Sort cards by rank for easier processing
+    full = kicker(full, len(full), ret_list=True)
+    
+    # Count ranks and suits
     rank_count = {}
     suit_count = {}
     
@@ -591,72 +605,224 @@ def eval_standard(player, deck):
         rank_count[rank] = rank_count.get(rank, 0) + 1
         suit_count[suit] = suit_count.get(suit, 0) + 1
     
-    # Check for flush
+    # Check for straight possibility (must contain 5 or T)
+    straight_possible = rank_count.get("5", 0) >= 1 or rank_count.get("T", 0) >= 1
+    
+    # Check for flush first
     for suit, count in suit_count.items():
         if count >= 5:
             flush_cards = [card for card in full if card[1] == suit]
+            if straight_possible:
+                # Check for straight flush/royal flush
+                straight_result = straight_check(flush_cards)
+                if straight_result != "NA" and (straight_result.startswith("8") or straight_result.startswith("9")):
+                    return straight_result  # Return only if it's actually a straight/royal flush
+            # Regular flush (or straight that isn't a straight flush)
             return "5" + "".join(kicker(flush_cards, 5, ret_list=True))
     
-    # Check for pairs, trips, etc.
+    # Check for straight
+    if straight_possible:
+        straight_result = straight_check(full)
+        if straight_result != "NA":
+            return straight_result
+    
+    # Check for pairs, trips, quads
+    quads_rank = None
+    trips_rank = None
     pairs = []
-    trips = None
-    quads = None
     
     for rank, count in rank_count.items():
         if count == 4:
-            quads = rank
+            quads_rank = rank
         elif count == 3:
-            trips = rank
+            trips_rank = rank
         elif count == 2:
             pairs.append(rank)
     
-    if quads:
-        return "7" + quads
-    if trips and pairs:
-        return "6" + trips + pairs[0]
-    if trips:
-        return "3" + trips
-    if len(pairs) >= 2:
-        return "2" + "".join(sorted(pairs, key=lambda x: rank_value(x), reverse=True)[:2])
-    if len(pairs) == 1:
-        return "1" + pairs[0]
+    # Four of a kind
+    if quads_rank is not None:
+        non_quad_cards = [card for card in full if card[0] != quads_rank]
+        quad_cards = [card for card in full if card[0] == quads_rank]
+        kicker_card = kicker(non_quad_cards, 1)
+        return "7" + "".join(quad_cards) + kicker_card
     
-    return "0" + "".join(kicker(full, 5, ret_list=True))
+    # Full house
+    if trips_rank is not None and pairs:
+        trips_cards = [card for card in full if card[0] == trips_rank]
+        pair_rank = sorted(pairs, key=lambda x: rank_value(x), reverse=True)[0]
+        pair_cards = [card for card in full if card[0] == pair_rank][:2]
+        return "6" + "".join(trips_cards) + "".join(pair_cards)
+    
+    # Three of a kind
+    if trips_rank is not None:
+        trips_cards = [card for card in full if card[0] == trips_rank]
+        non_trips_cards = [card for card in full if card[0] != trips_rank]
+        kicker_cards = kicker(non_trips_cards, 2)
+        return "3" + "".join(trips_cards) + kicker_cards
+    
+    # Two pair
+    if len(pairs) >= 2:
+        sorted_pairs = sorted(pairs, key=lambda x: rank_value(x), reverse=True)[:2]
+        pair_cards = []
+        for rank in sorted_pairs:
+            pair_cards.extend([card for card in full if card[0] == rank])
+        non_pair_cards = [card for card in full if card[0] not in sorted_pairs]
+        kicker_card = kicker(non_pair_cards, 1)
+        return "2" + "".join(pair_cards) + kicker_card
+    
+    # One pair
+    if len(pairs) == 1:
+        pair_rank = pairs[0]
+        pair_cards = [card for card in full if card[0] == pair_rank]
+        non_pair_cards = [card for card in full if card[0] != pair_rank]
+        kicker_cards = kicker(non_pair_cards, 3)
+        return "1" + "".join(pair_cards) + kicker_cards
+    
+    # High card
+    return "0" + kicker(full, 5)
+
+def straight_check(full_list):
+    """Check for straights, straight flushes, and royal flushes
+    
+    Tests all possible 5-card combinations and returns the highest-ranking straight.
+    Priority order: Royal Flush > Straight Flush > Regular Straight > Wheel Straight
+    
+    Args:
+        full_list: List of cards (unsorted, any order)
+    
+    Returns:
+        String: "9xxxxx" (royal), "8xxxxx" (straight flush), "4xxxxx" (straight), or "NA"
+    """
+    straight_ranks = [
+        'AKQJT', 'KQJT9', 'QJT98', 'JT987', 'T9876', 
+        '98765', '87654', '76543', '65432', 'A5432'
+    ]
+    
+    # Royal flushes (highest priority)
+    royal_flushes = ["AsKsQsJsTs", "AcKcQcJcTc", "AdKdQdJdTd", "AhKhQhJhTh"]
+    
+    # Straight flushes (including both wheel representations)
+    straight_flushes = [
+        "KsQsJsTs9s", "KcQcJcTc9c", "KdQdJdTd9d", "KhQhJhTh9h",
+        "QsJsTs9s8s", "QcJcTc9c8c", "QdJdTd9d8d", "QhJhTh9h8h",
+        "JsTs9s8s7s", "JcTc9c8c7c", "JdTd9d8d7d", "JhTh9h8h7h",
+        "Ts9s8s7s6s", "Tc9c8c7c6c", "Td9d8d7d6d", "Th9h8h7h6h",
+        "9s8s7s6s5s", "9c8c7c6c5c", "9d8d7d6d5d", "9h8h7h6h5h",
+        "8s7s6s5s4s", "8c7c6c5c4c", "8d7d6d5d4d", "8h7h6h5h4h",
+        "7s6s5s4s3s", "7c6c5c4c3c", "7d6d5d4d3d", "7h6h5h4h3h",
+        "6s5s4s3s2s", "6c5c4c3c2c", "6d5d4d3d2d", "6h5h4h3h2h",
+        "5s4s3s2sAs", "5c4c3c2cAc", "5d4d3d2dAd", "5h4h3h2hAh",
+        "As5s4s3s2s", "Ac5c4c3c2c", "Ad5d4d3d2d", "Ah5h4h3h2h"
+    ]
+    
+    length = len(full_list)
+    best_straight = ""
+    best_rank = -1  # Track the rank of the best straight found
+    
+    if length >= 5:
+        # Test all 5-card combinations from the available cards
+        for combo in itertools.combinations(full_list, 5):
+            combo_list = list(combo)
+            
+            # Get ranks sorted high to low (A high)
+            ranks = "".join([card[0] for card in kicker(combo_list, 5, ret_list=True)])
+            combo_str = "".join(kicker(combo_list, 5, ret_list=True))
+            
+            # Check for royal flush first (highest priority - return immediately)
+            if combo_str in royal_flushes:
+                return "9" + combo_str
+            
+            # Check for wheel straight (A5432 pattern with A high)
+            if ranks == "A5432":
+                # Create proper wheel representation (5432A format)
+                wheel_cards = []
+                ace_card = None
+                for card in combo_list:
+                    if card[0] == 'A':
+                        ace_card = card
+                    else:
+                        wheel_cards.append(card)
+                
+                # Sort non-ace cards and put ace at end
+                wheel_cards = kicker(wheel_cards, 4, ret_list=True)
+                wheel_representation = "".join(wheel_cards) + ace_card
+                
+                # Check if it's a wheel straight flush
+                if combo_str in straight_flushes:
+                    current_rank = 8  # Straight flush rank
+                    current_result = "8" + wheel_representation
+                else:
+                    current_rank = 4  # Regular straight rank  
+                    current_result = "4" + wheel_representation
+                
+                # Wheel is lowest straight (rank 0 for comparison)
+                straight_priority = 0
+                
+                if current_rank > best_rank or (current_rank == best_rank and straight_priority > best_rank):
+                    best_straight = current_result
+                    best_rank = current_rank
+                
+                continue
+            
+            # Check other straight patterns
+            if ranks in straight_ranks and ranks != "A5432":
+                # Get priority of this straight (higher index = better straight)
+                straight_priority = straight_ranks.index(ranks)
+                
+                # Check for straight flush
+                if combo_str in straight_flushes:
+                    current_rank = 8  # Straight flush rank
+                    current_result = "8" + combo_str
+                else:
+                    current_rank = 4  # Regular straight rank
+                    current_result = "4" + combo_str
+                
+                # Update best if this is better (higher rank, or same rank but better straight)
+                if current_rank > best_rank or (current_rank == best_rank and straight_priority > best_rank):
+                    best_straight = current_result
+                    best_rank = current_rank
+    
+    # Return the best straight found, or "NA" if none
+    return best_straight if best_straight else "NA"
 
 def kicker(fin_list, num_kickers, ret_list=False):
-    if len(fin_list) == 0:
+    """Sort cards by rank value, return top kickers"""
+    if not fin_list:
         return [] if ret_list else ""
     
-    rank_dict = {"A": 13, "K": 12, "Q": 11, "J": 10, "T": 9, "9": 8, "8": 7, "7": 6, "6": 5, "5": 4, "4": 3, "3": 2, "2": 1}
+    # Handle string inputs (just ranks)
+    if isinstance(fin_list[0], str) and len(fin_list[0]) == 1:
+        rank_values = [rank_value(rank) for rank in fin_list]
+        sorted_ranks = sorted(zip(fin_list, rank_values), key=lambda x: x[1], reverse=True)
+        result = [item[0] for item in sorted_ranks[:num_kickers]]
+        return result if ret_list else "".join(result)
     
-    list_dict = {}
-    for elt in fin_list:
-        if isinstance(elt, str) and len(elt) >= 2:
-            list_dict[elt] = rank_dict.get(elt[0], 1)
+    # Handle card inputs (rank+suit)
+    rank_values = []
+    for card in fin_list:
+        if isinstance(card, str) and len(card) >= 2:
+            rank_values.append((card, rank_value(card[0])))
         else:
-            raise ValueError(f"kicker() got invalid card format: {elt} (type: {type(elt)})")
+            raise ValueError(f"Invalid card format: {card}")
     
-    sorted_dict = sorted(list_dict.items(), key=lambda x: x[1], reverse=True)
+    # Sort by rank value (highest first)
+    sorted_cards = sorted(rank_values, key=lambda x: x[1], reverse=True)
+    result = [item[0] for item in sorted_cards[:num_kickers]]
     
-    if ret_list:
-        return [sorted_dict[i][0] for i in range(min(num_kickers, len(sorted_dict)))]
-    else:
-        return "".join([sorted_dict[i][0] for i in range(min(num_kickers, len(sorted_dict)))])
+    return result if ret_list else "".join(result)
 
 def rank_value(rank):
-    if not isinstance(rank, str):
-        raise ValueError(f"rank_value got non-string: {rank} (type: {type(rank)})")
-    if len(rank) != 1:
-        raise ValueError(f"rank_value got multi-character string: '{rank}' (should be single character)")
-    
-    values = {"A": 14, "K": 13, "Q": 12, "J": 11, "T": 10, "9": 9, "8": 8, "7": 7, "6": 6, "5": 5, "4": 4, "3": 3, "2": 2}
-    
+    """Convert rank character to numerical value for comparison"""
+    values = {
+        "A": 14, "K": 13, "Q": 12, "J": 11, "T": 10, 
+        "9": 9, "8": 8, "7": 7, "6": 6, "5": 5, "4": 4, "3": 3, "2": 2
+    }
     if rank not in values:
-        raise ValueError(f"rank_value got invalid rank: '{rank}' (expected one of: A,K,Q,J,T,9,8,7,6,5,4,3,2)")
-    
+        raise ValueError(f"Invalid rank: {rank}")
     return values[rank]
 
 def eval_decoder_comparison(p1_string, p2_string, ret_string=False, ret_list=False):
+    """Compare two poker hands and return the winner"""
     if p1_string == p2_string:
         if ret_list:
             return p1_string, 0
@@ -664,103 +830,84 @@ def eval_decoder_comparison(p1_string, p2_string, ret_string=False, ret_list=Fal
             return p1_string
         return 0
 
-    p1_hand = int(p1_string[0])
-    p2_hand = int(p2_string[0])
+    p1_hand_type = int(p1_string[0])
+    p2_hand_type = int(p2_string[0])
 
-    if p1_hand > p2_hand:
+    # Compare hand types first
+    if p1_hand_type > p2_hand_type:
         if ret_list:
             return p1_string, 1
         if ret_string:
             return p1_string
         return 1
-    elif p2_hand > p1_hand:
+    elif p2_hand_type > p1_hand_type:
         if ret_list:
             return p2_string, 2
         if ret_string:
             return p2_string
         return 2
-    else:
-        if p1_hand == 4:
-            rank_dict = {"A": 13, "K": 12, "Q": 11, "J": 10, "T": 9, "9": 8, "8": 7, "7": 6, "6": 5, "5": 4, "4": 3, "3": 2, "2": 1}
-            if rank_dict[p1_string[3]] > rank_dict[p2_string[3]]:
-                if ret_list:
-                    return p1_string, 1
-                if ret_string:
-                    return p1_string
-                return 1
-            elif rank_dict[p1_string[3]] < rank_dict[p2_string[3]]:
-                if ret_list:
-                    return p2_string, 2
-                if ret_string:
-                    return p2_string
-                return 2
-            elif p1_string[1] == "A":
-                if p2_string[1] == "A":
-                    if ret_list:
-                        return p1_string, 0
-                    if ret_string:
-                        return p2_string
-                    return 0
-                if ret_list:
-                    return p2_string, 2
-                if ret_string:
-                    return p2_string
-                return 2
-            elif p2_string[1] == "A":
-                if ret_list:
-                    return p1_string, 1
-                if ret_string:
-                    return p1_string
-                return 1
-            else:
-                if ret_list:
-                    return p1_string, 0
-                if ret_string:
-                    return p1_string
-                return 0
-
-        rank_dict = {"A": 13, "K": 12, "Q": 11, "J": 10, "T": 9, "9": 8, "8": 7, "7": 6, "6": 5, "5": 4, "4": 3, "3": 2, "2": 1}
-        
-        for i in range(5):
-            if len(p1_string) > 1 + 2 * i and len(p2_string) > 1 + 2 * i:
-                p1 = rank_dict[p1_string[1 + 2 * i]]
-                p2 = rank_dict[p2_string[1 + 2 * i]]
-
-                if p1 > p2:
-                    if ret_list:
-                        return p1_string, 1
-                    if ret_string:
-                        return p1_string
-                    return 1
-                elif p2 > p1:
-                    if ret_list:
-                        return p2_string, 2
-                    if ret_string:
-                        return p2_string
-                    return 2
-
-        if ret_list:
-            return p1_string, 0
-        if ret_string:
-            return p1_string
-        return 0
+    
+    # Same hand type - compare kickers
+    # Special case for straights (hand type 4)
+    if p1_hand_type == 4:
+        # For straights, compare the second card (position 3) to handle A-low straights
+        if len(p1_string) > 3 and len(p2_string) > 3:
+            p1_second = rank_value(p1_string[3])
+            p2_second = rank_value(p2_string[3])
+            
+            if p1_second > p2_second:
+                return (p1_string, 1) if ret_list else (p1_string if ret_string else 1)
+            elif p2_second > p1_second:
+                return (p2_string, 2) if ret_list else (p2_string if ret_string else 2)
+            
+            # Handle wheel vs 6-high straight
+            p1_first = p1_string[1] if len(p1_string) > 1 else "2"
+            p2_first = p2_string[1] if len(p2_string) > 1 else "2"
+            
+            if p1_first == "A" and p2_first != "A":
+                # P1 has wheel, P2 has higher straight
+                return (p2_string, 2) if ret_list else (p2_string if ret_string else 2)
+            elif p2_first == "A" and p1_first != "A":
+                # P2 has wheel, P1 has higher straight
+                return (p1_string, 1) if ret_list else (p1_string if ret_string else 1)
+    
+    # Compare card by card for other hand types
+    max_cards = min(len(p1_string) // 2, len(p2_string) // 2, 5)
+    
+    for i in range(max_cards):
+        card_pos = 1 + (i * 2)
+        if len(p1_string) > card_pos and len(p2_string) > card_pos:
+            p1_rank = rank_value(p1_string[card_pos])
+            p2_rank = rank_value(p2_string[card_pos])
+            
+            if p1_rank > p2_rank:
+                return (p1_string, 1) if ret_list else (p1_string if ret_string else 1)
+            elif p2_rank > p1_rank:
+                return (p2_string, 2) if ret_list else (p2_string if ret_string else 2)
+    
+    # Hands are identical
+    return (p1_string, 0) if ret_list else (p1_string if ret_string else 0)
 `;
 
         const monteCarloPython = `
 import random
 
 def simulate_hand_with_combos(player1, player2, deck, num_cards=0, set_board=[]):
+    """Simulate one hand and return results with combo tracking"""
+    # Set up the board
     if num_cards == 0:
+        # Pre-flop - simulate full community
         deck.clear_all()
         deck.add_block(player1.cards)
         deck.add_block(player2.cards)
         deck.sim_full_comm()
     else:
+        # Post-flop - use existing community cards and fill remainder
         deck.clear_all()
         deck.add_block(player1.cards)
         deck.add_block(player2.cards)
         
-        current_community = set_board.copy()
+        current_community = set_board[:]
         deck.add_block(current_community)
         
         if len(current_community) < 5:
@@ -771,9 +918,9 @@ def simulate_hand_with_combos(player1, player2, deck, num_cards=0, set_board=[])
             deck.add_block(random_cards)
         
         deck.set_community_cards(current_community)
-
+    
     is_pineapple = len(player1.cards) == 3
-
+    
     if is_pineapple:
         p1_result, p1_best_combo = evaluator_pineapple(player1, deck, best_hand=True)
         p2_result, p2_best_combo = evaluator_pineapple(player2, deck, best_hand=True)
@@ -785,92 +932,74 @@ def simulate_hand_with_combos(player1, player2, deck, num_cards=0, set_board=[])
         result = eval_decoder_comparison(p1_result, p2_result)
         return result, None, None
 
-def simulate_hand(player1, player2, deck, best_hand=False, num_cards=0, set_board=[]):
+def simulate_hand(player1, player2, deck, num_cards=0, set_board=[]):
+    """Simple hand simulation without combo tracking"""
     result, _, _ = simulate_hand_with_combos(player1, player2, deck, num_cards, set_board)
     return result
 
-def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, num_cards=0, set_board=[]):
+def estimate_equity(player1, player2, deck, num_simulations, num_cards=0, set_board=[]):
+    """Estimate equity using Monte Carlo simulation"""
     player1_wins = 0
     player2_wins = 0
     ties = 0
     
     is_pineapple = len(player1.cards) == 3
-    print(f"DEBUG: Is pineapple? {is_pineapple}, P1 cards: {len(player1.cards)}, P2 cards: {len(player2.cards)}")
     
-    p1_combo_wins = [0, 0, 0]
-    p2_combo_wins = [0, 0, 0]
-    p1_combo_total = [0, 0, 0]
-    p2_combo_total = [0, 0, 0]
-
+    # Initialize combo tracking for pineapple
+    p1_combo_wins = [0, 0, 0] if is_pineapple else None
+    p2_combo_wins = [0, 0, 0] if is_pineapple else None  
+    p1_combo_total = [0, 0, 0] if is_pineapple else None
+    p2_combo_total = [0, 0, 0] if is_pineapple else None
+    
+    p1_combos = [
+        [player1.cards[0], player1.cards[1]],
+        [player1.cards[0], player1.cards[2]],
+        [player1.cards[1], player1.cards[2]]
+    ] if is_pineapple else None
+    
+    p2_combos = [
+        [player2.cards[0], player2.cards[1]], 
+        [player2.cards[0], player2.cards[2]],
+        [player2.cards[1], player2.cards[2]]
+    ] if is_pineapple else None
+    
     for i in range(num_simulations):
         if is_pineapple:
             result, p1_best_combo, p2_best_combo = simulate_hand_with_combos(player1, player2, deck, num_cards, set_board)
+            
+            # Track which combo was used
+            if p1_best_combo:
+                for idx, combo in enumerate(p1_combos):
+                    if set(combo) == set(p1_best_combo):
+                        p1_combo_total[idx] += 1
+                        if result == 1:
+                            p1_combo_wins[idx] += 1
+                        break
+            
+            if p2_best_combo:
+                for idx, combo in enumerate(p2_combos):
+                    if set(combo) == set(p2_best_combo):
+                        p2_combo_total[idx] += 1
+                        if result == 2:
+                            p2_combo_wins[idx] += 1
+                        break
         else:
-            result = simulate_hand(player1, player2, deck, num_cards=num_cards, set_board=set_board)
-            p1_best_combo = None
-            p2_best_combo = None
-
-        if is_pineapple and p1_best_combo is not None and p2_best_combo is not None:
-            if i < 3:
-                print(f"DEBUG: Simulation {i}, P1 best combo: {p1_best_combo}, P2 best combo: {p2_best_combo}")
-            
-            p1_combos = [
-                [player1.cards[0], player1.cards[1]],
-                [player1.cards[0], player1.cards[2]],
-                [player1.cards[1], player1.cards[2]]
-            ]
-            p2_combos = [
-                [player2.cards[0], player2.cards[1]],
-                [player2.cards[0], player2.cards[2]],
-                [player2.cards[1], player2.cards[2]]
-            ]
-            
-            p1_combo_idx = -1
-            p2_combo_idx = -1
-            
-            for idx, combo in enumerate(p1_combos):
-                if set(combo) == set(p1_best_combo):
-                    p1_combo_idx = idx
-                    break
-                    
-            for idx, combo in enumerate(p2_combos):
-                if set(combo) == set(p2_best_combo):
-                    p2_combo_idx = idx
-                    break
-            
-            if i < 3:
-                print(f"DEBUG: P1 combo index: {p1_combo_idx}, P2 combo index: {p2_combo_idx}")
-            
-            if p1_combo_idx >= 0:
-                p1_combo_total[p1_combo_idx] += 1
-                if result == 1:
-                    p1_combo_wins[p1_combo_idx] += 1
-                    
-            if p2_combo_idx >= 0:
-                p2_combo_total[p2_combo_idx] += 1
-                if result == 2:
-                    p2_combo_wins[p2_combo_idx] += 1
-
+            result = simulate_hand(player1, player2, deck, num_cards, set_board)
+        
         if result == 1:
             player1_wins += 1
         elif result == 2:
             player2_wins += 1
         else:
             ties += 1
-
+    
     player1_equity = player1_wins / num_simulations
     player2_equity = player2_wins / num_simulations
     draw_equity = ties / num_simulations
-
+    
     if is_pineapple:
-        print(f"DEBUG: P1 combo totals: {p1_combo_total}")
-        print(f"DEBUG: P1 combo wins: {p1_combo_wins}")
-        print(f"DEBUG: P2 combo totals: {p2_combo_total}")
-        print(f"DEBUG: P2 combo wins: {p2_combo_wins}")
-        print(f"DEBUG: Returning extended results with 7 values")
         return [player1_equity, player2_equity, draw_equity, p1_combo_wins, p1_combo_total, p2_combo_wins, p2_combo_total]
     else:
-        print(f"DEBUG: Not pineapple, returning basic results with 3 values")
         return [player1_equity, player2_equity, draw_equity]
 `;
 
@@ -978,7 +1107,7 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
                 debugLog(`❌ Python Execution Failed in ${operation}`, true);
                 debugLog(`Error Type: ${error.constructor.name}`, true);
                 debugLog(`Error Message: ${error.message}`, true);
-                debugLog(`Error Stack: ${error.stack}`, true);
+                if (error.stack) debugLog(`Error Stack: ${error.stack}`, true);
                 throw error;
             }
         }
@@ -1019,68 +1148,63 @@ def estimate_equity(player1, player2, deck, num_simulations, best_hand=False, nu
                 showStatus('🔄 Loading Python modules...', 'loading');
                 debugLog('📦 Starting module loading sequence...');
                 
-                debugLog('🧪 Testing basic Python execution...');
-                const basicTest = capturePythonError('2 + 3', 'Basic Math Test');
-                debugLog(`✅ Basic Python test result: ${basicTest}`);
-                
                 debugLog('📝 Loading Cardset module...');
-                const cardsetResult = capturePythonError(cardsetPython + '\n"Cardset loaded"', 'Cardset Module Loading');
-                debugLog(`📝 Cardset load result: ${cardsetResult}`);
+                capturePythonError(cardsetPython, 'Cardset Module Loading');
                 
                 debugLog('👤 Loading Player module...');
-                const playerResult = capturePythonError(playerPython + '\n"Player loaded"', 'Player Module Loading');
-                debugLog(`👤 Player load result: ${playerResult}`);
+                capturePythonError(playerPython, 'Player Module Loading');
                 
                 debugLog('👥 Loading TempPlayer module...');
-                const tempPlayerResult = capturePythonError(tempPlayerPython + '\n"TempPlayer loaded"', 'TempPlayer Module Loading');
-                debugLog(`👥 TempPlayer load result: ${tempPlayerResult}`);
+                capturePythonError(tempPlayerPython, 'TempPlayer Module Loading');
                 
                 debugLog('🧮 Loading Evaluator module...');
-                const evaluatorResult = capturePythonError(evaluatorPython + '\n"Evaluator loaded"', 'Evaluator Module Loading');
-                debugLog(`🧮 Evaluator load result: ${evaluatorResult}`);
+                capturePythonError(evaluatorPython, 'Evaluator Module Loading');
                 
                 debugLog('🎲 Loading Monte Carlo module...');
-                const monteCarloResult = capturePythonError(monteCarloPython + '\n"MonteCarlo loaded"', 'Monte Carlo Module Loading');
-                debugLog(`🎲 Monte Carlo load result: ${monteCarloResult}`);
+                capturePythonError(monteCarloPython, 'Monte Carlo Module Loading');
                 
-                debugLog('🔗 Testing Python classes...');
-                
-                const classTest = capturePythonError(`
-Cardset
-Player  
-TempPlayer
-"CLASSES_EXIST"
-                `, 'Class Existence Test');
-                debugLog(`🔗 Class test result: ${classTest}`);
-                
-                const objectTest = capturePythonError(`
+                // Comprehensive test
+                debugLog('🧪 Running comprehensive test...');
+                const testCode = `
+# Test basic functionality
 deck = Cardset()
 p1 = Player()
 p2 = Player()
-"OBJECTS_CREATED"
-                `, 'Object Creation Test');
-                debugLog(`🔗 Object creation result: ${objectTest}`);
+
+# Test card setting
+p1.set_cards(['As', 'Ah', 'Th'], deck)
+p2.set_cards(['3s', '6h', 'Kc'], deck)
+
+# Test community cards
+deck.set_community_cards(['3h', '4h', '5c', '7s', '9d'])
+
+# Test hand evaluation
+p1_hand = evaluator_pineapple(p1, deck)
+p2_hand = evaluator_pineapple(p2, deck)
+
+# Test comparison
+winner = eval_decoder_comparison(p1_hand, p2_hand)
+
+f"P1: {p1_hand}, P2: {p2_hand}, Winner: {winner}"
+                `;
                 
-                const functionalityTest = capturePythonError(`
-deck = Cardset()
-len(deck.deck)
-                `, 'Functionality Test');
-                debugLog(`🔗 Functionality test result: ${functionalityTest}`);
+                const testResult = capturePythonError(testCode, 'Comprehensive Test');
+                debugLog(`🧪 Test result: ${testResult}`);
                 
-                const evaluatorTest = capturePythonError(`
-evaluator_pineapple
-eval_standard
-eval_decoder_comparison
-"EVALUATOR_FUNCTIONS_EXIST"
-                `, 'Evaluator Functions Test');
-                debugLog(`🔗 Evaluator functions test result: ${evaluatorTest}`);
+                // Quick equity test
+                debugLog('🎯 Testing equity calculation...');
+                const equityTestCode = `
+deck2 = Cardset()
+hero = Player()
+villain = Player()
+hero.set_cards(['As', 'Ah', 'Th'], deck2)
+villain.set_cards(['3s', '6h', 'Kc'], deck2)
+results = estimate_equity(hero, villain, deck2, 100)
+f"Equity test: P1={results[0]:.3f}, P2={results[1]:.3f}, Ties={results[2]:.3f}"
+                `;
                 
-                const monteCarloTest = capturePythonError(`
-simulate_hand
-estimate_equity
-"MONTE_CARLO_FUNCTIONS_EXIST"
-                `, 'Monte Carlo Functions Test');
-                debugLog(`🔗 Monte Carlo functions test result: ${monteCarloTest}`);
+                const equityResult = capturePythonError(equityTestCode, 'Equity Test');
+                debugLog(`🎯 Equity test: ${equityResult}`);
                 
                 debugLog('✅ All tests passed');
                 debugLog('🎉 Python environment fully initialized');
@@ -1121,13 +1245,16 @@ estimate_equity
                     throw new Error(`Player 2 needs exactly 3 cards (has ${p2Cards.length})`);
                 }
                 
-                const maxSims = Math.min(sims, 5000);
-                showStatus(`🔄 Running ${maxSims.toLocaleString()} simulations...`, 'loading');
+                showStatus(`🔄 Running ${sims.toLocaleString()} simulations...`, 'loading');
                 
                 debugLog('🔄 Starting calculation...');
-                debugLog(`🎯 Running ${maxSims} simulations`);
+                debugLog(`🎯 P1 Cards: ${p1Cards.join(' ')}`);
+                debugLog(`🎯 P2 Cards: ${p2Cards.join(' ')}`);
+                debugLog(`🎯 Community: ${communityCards.join(' ')}`);
+                debugLog(`🎯 Running ${sims} simulations`);
                 
                 const calculationCode = `
+# Set up fresh simulation
 deck = Cardset()
 hero = Player()
 villain = Player()
@@ -1140,12 +1267,17 @@ hero.set_cards(p1_cards, deck)
 villain.set_cards(p2_cards, deck)
 
 ${communityCards.length > 0 ? `
+# Post-flop calculation
 deck.set_community_cards(community_cards)
-equity_results = estimate_equity(hero, villain, deck, ${maxSims}, num_cards=len(community_cards), set_board=community_cards)
+print(f"Post-flop with community: {community_cards}")
+equity_results = estimate_equity(hero, villain, deck, ${sims}, num_cards=len(community_cards), set_board=community_cards)
 ` : `
-equity_results = estimate_equity(hero, villain, deck, ${maxSims})
+# Pre-flop calculation  
+print("Pre-flop calculation")
+equity_results = estimate_equity(hero, villain, deck, ${sims})
 `}
 
+print(f"Equity results: {equity_results}")
 equity_results
                 `;
                 
@@ -1163,7 +1295,7 @@ equity_results
                         player1_equity: parseFloat(resultArray[0]),
                         player2_equity: parseFloat(resultArray[1]),
                         ties: parseFloat(resultArray[2]),
-                        simulations: maxSims,
+                        simulations: sims,
                         player1_cards: p1Cards,
                         player2_cards: p2Cards,
                         community_cards: communityCards
@@ -1179,7 +1311,7 @@ equity_results
                     
                     showResults(jsResults);
                     showStatus('✅ Calculation complete!', 'success');
-                    debugLog(`✅ Calculation successful: P1=${jsResults.player1_equity}, P2=${jsResults.player2_equity}, Ties=${jsResults.ties}`);
+                    debugLog(`✅ Calculation successful: P1=${(jsResults.player1_equity*100).toFixed(1)}%, P2=${(jsResults.player2_equity*100).toFixed(1)}%, Ties=${(jsResults.ties*100).toFixed(1)}%`);
                 } else {
                     throw new Error(`Invalid results: ${JSON.stringify(resultArray)}`);
                 }
@@ -1311,19 +1443,7 @@ equity_results
                                     ${p1Combos.map((combo, i) => {
                                         const wins = results.p1_combo_wins[i] || 0;
                                         const total = results.p1_combo_total[i] || 1;
-                                        const winRate = ((wins / total) * 100).toFixed(1);
-                                        const usage = ((total / simCount) * 100).toFixed(1);
-                                        return `<div style="font-size: 13px; margin-bottom: 5px;">
-                                            <strong>${combo}</strong>: ${usage}% used, ${winRate}% won when used
-                                        </div>`;
-                                    }).join('')}
-                                </div>
-                                <div style="flex: 1;">
-                                    <h5 style="color: #dc3545; margin-bottom: 10px;">Player 2 Best Combos:</h5>
-                                    ${p2Combos.map((combo, i) => {
-                                        const wins = results.p2_combo_wins[i] || 0;
-                                        const total = results.p2_combo_total[i] || 1;
-                                        const winRate = ((wins / total) * 100).toFixed(1);
+                                        const winRate = total > 0 ? ((wins / total) * 100).toFixed(1) : '0.0';
                                         const usage = ((total / simCount) * 100).toFixed(1);
                                         return `<div style="font-size: 13px; margin-bottom: 5px;">
                                             <strong>${combo}</strong>: ${usage}% used, ${winRate}% won when used
