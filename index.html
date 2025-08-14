@@ -153,21 +153,21 @@
             cursor: not-allowed;
             position: relative;
             color: white !important;
+            padding-right: 50px; /* Make room for spinner */
         }
 
         .btn-green:disabled::after {
-             content: '';
-             position: absolute;
-             left: 50%;
-             top: 50%;
-             width: 16px;
-             height: 16px;
-             margin-left: -8px;
-             margin-top: -8px;
-             border: 2px solid transparent;
-             border-top: 2px solid white;
-             border-radius: 50%;
-             animation: spin 1s linear infinite;
+            content: '';
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            width: 16px;
+            height: 16px;
+            margin-top: -8px;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
         
         @keyframes spin {
