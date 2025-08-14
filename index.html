@@ -1256,6 +1256,8 @@ f"Equity test: P1={results[0]:.3f}, P2={results[1]:.3f}, Ties={results[2]:.3f}"
             const btn = document.getElementById('calcBtn');
             btn.textContent = 'Calculating...';
             btn.disabled = true;
+            // Add a small delay to ensure loading state is visible
+            await new Promise(resolve => setTimeout(resolve, 100));
             // Don't Hide text, let css handle the spinner'
             
             try {
