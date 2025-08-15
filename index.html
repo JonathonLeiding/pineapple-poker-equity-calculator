@@ -424,7 +424,7 @@
             <div id="status"></div>
             <div id="results"></div>
 
-            <!-- Debug Controls -->
+            <!-- Debug Controls (Deprecated) 
             <div style="text-align: center; margin: 30px 0;">
                 <button class="btn-gray" onclick="toggleDebugConsole()">
                     Show Debug Console
@@ -432,12 +432,10 @@
                 <button class="btn-gray" onclick="copyDebugLog()">
                     Copy Debug Log
                 </button>
-            </div>
+            </div> -->
 
-            <!-- Debug Console -->
+            <!-- Debug Console (Deprecated)
             <div id="debugConsole" style="display: none; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 2px solid #dee2e6;">
-
-                <!-- Debug Console -->
                 <div id="debugConsole" style="display: none; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 2px solid #dee2e6;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <h4 style="margin: 0; color: #495057;">🐛 Debug Console</h4>
@@ -447,7 +445,7 @@
                         <div style="color: #6c757d;">Debug output will appear here...</div>
                     </div>
                 </div>
-            </div>
+            </div> -->
 
             <!-- Info Section -->
             <div class="info">
@@ -1602,9 +1600,10 @@ equity_results
         window.closeSelector = closeSelector;
         window.selectCard = selectCard;
         window.removeCard = removeCard;
-        window.toggleDebugConsole = toggleDebugConsole;
-        window.clearDebugLog = clearDebugLog;
-        window.copyDebugLog = copyDebugLog;
+        // Deprecated
+        // window.toggleDebugConsole = toggleDebugConsole;
+        // window.clearDebugLog = clearDebugLog;
+        // window.copyDebugLog = copyDebugLog;
         window.clearPlayer = clearPlayer;
         window.clearCommunity = clearCommunity;
     </script>

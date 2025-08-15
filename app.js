@@ -1,3 +1,10 @@
+/*
+==========================================================
+DEPRECATED FILE - app.js
+This file is no longer used in the project.
+Keeping it here for reference, but do not modify or use.
+==========================================================
+
 let pyodide;
 let isInitialized = false;
 let isCalculating = false;
@@ -519,3 +526,5 @@ window.removeCard = removeCard;
 window.toggleDebugConsole = toggleDebugConsole;
 window.clearDebugLog = clearDebugLog;
 window.copyDebugLog = copyDebugLog;
+
+*/
