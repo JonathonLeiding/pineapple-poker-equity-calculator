@@ -342,7 +342,10 @@
         <div class="calculator">
             <div class="players">
                 <div class="player player1">
-                    <h3>Player 1</h3>
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px;">
+                        <h3 style="margin: 0;">Player 1</h3>
+                        <button class="btn-gray" onclick="clearPlayer('1')" style="padding: 5px 10px; font-size: 12px;">Clear</button>
+                    </div>
                     <div class="cards">
                         <div class="card" data-player="1" data-index="0" onclick="openSelector(this)">
                             <div>?</div>
@@ -355,9 +358,12 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="player player2">
-                    <h3>Player 2</h3>
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px;">
+                        <h3 style="margin: 0;">Player 2</h3>
+                        <button class="btn-gray" onclick="clearPlayer('2')" style="padding: 5px 10px; font-size: 12px;">Clear</button>
+                    </div>
                     <div class="cards">
                         <div class="card" data-player="2" data-index="0" onclick="openSelector(this)">
                             <div>?</div>
@@ -371,9 +377,12 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="community">
-                <h3>Community Cards (Optional)</h3>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px;">
+                    <h3 style="margin: 0;">Community Cards (Optional)</h3>
+                    <button class="btn-gray" onclick="clearCommunity()" style="padding: 5px 10px; font-size: 12px;">Clear</button>
+                </div>
                 <div class="cards">
                     <div class="card" data-player="community" data-index="0" onclick="openSelector(this)">
                         <div>?</div>
@@ -392,7 +401,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="controls">
                 <label>Simulations:</label>
                 <select id="simulations">
@@ -402,7 +411,7 @@
                     <option value="50000">50,000 (Slow)</option>
                 </select>
             </div>
-            
+
             <div class="buttons">
                 <button id="calcBtn" class="btn-green" onclick="calculate()">
                     Calculate Equity
@@ -410,6 +419,13 @@
                 <button class="btn-gray" onclick="clearAll()">
                     Clear All
                 </button>
+            </div>
+
+            <div id="status"></div>
+            <div id="results"></div>
+
+            <!-- Debug Controls -->
+            <div style="text-align: center; margin: 30px 0;">
                 <button class="btn-gray" onclick="toggleDebugConsole()">
                     Show Debug Console
                 </button>
@@ -417,51 +433,51 @@
                     Copy Debug Log
                 </button>
             </div>
-            
-            <div id="status"></div>
-            <div id="results"></div>
-            
+
             <!-- Debug Console -->
             <div id="debugConsole" style="display: none; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 2px solid #dee2e6;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h4 style="margin: 0; color: #495057;">🐛 Debug Console</h4>
-                    <button onclick="clearDebugLog()" style="padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px;">Clear</button>
-                </div>
-                <div id="debugOutput" style="background: #ffffff; border: 1px solid #ced4da; border-radius: 4px; padding: 15px; max-height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4;">
-                    <div style="color: #6c757d;">Debug output will appear here...</div>
+
+                <!-- Debug Console -->
+                <div id="debugConsole" style="display: none; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 2px solid #dee2e6;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0; color: #495057;">🐛 Debug Console</h4>
+                        <button onclick="clearDebugLog()" style="padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px;">Clear</button>
+                    </div>
+                    <div id="debugOutput" style="background: #ffffff; border: 1px solid #ced4da; border-radius: 4px; padding: 15px; max-height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4;">
+                        <div style="color: #6c757d;">Debug output will appear here...</div>
+                    </div>
                 </div>
             </div>
+
+            <!-- Info Section -->
+            <div class="info">
+                <h2>About Pineapple Hold'em Poker</h2>
+
+                <h4>🃏 How It Works</h4>
+                <ul>
+                    <li><strong>3 Hole Cards:</strong> Each player receives 3 cards instead of 2</li>
+                    <li><strong>Discard Decision:</strong> Must discard 1 card before the flop</li>
+                    <li><strong>Regular Play:</strong> Continues like normal Texas Hold'em after discard</li>
+                    <li><strong>Best 5 Cards:</strong> Make the best hand from remaining 2 hole cards + 5 community cards</li>
+                </ul>
+
+                <h4>🎯 Strategy Differences</h4>
+                <ul>
+                    <li><strong>More Drawing Hands:</strong> Suited connectors and drawing hands gain value</li>
+                    <li><strong>Pocket Pairs Stronger:</strong> Better odds of making sets</li>
+                    <li><strong>Position Crucial:</strong> Seeing opponents' discards provides information</li>
+                    <li><strong>Bigger Pots:</strong> More action due to stronger starting hands</li>
+                </ul>
+
+                <h4>🧮 About This Calculator</h4>
+                <ul>
+                    <li><strong>Monte Carlo Method:</strong> Runs thousands of simulations for accuracy</li>
+                    <li><strong>All Combinations:</strong> Tests all possible 2-card selections from 3-card hands</li>
+                    <li><strong>Pre & Post-Flop:</strong> Calculate equity before and after community cards</li>
+                    <li><strong>Proven Algorithms:</strong> Based on standard poker evaluation methods</li>
+                </ul>
+            </div>
         </div>
-        
-        <!-- Info Section -->
-        <div class="info">
-            <h2>About Pineapple Hold'em Poker</h2>
-            
-            <h4>🃏 How It Works</h4>
-            <ul>
-                <li><strong>3 Hole Cards:</strong> Each player receives 3 cards instead of 2</li>
-                <li><strong>Discard Decision:</strong> Must discard 1 card before the flop</li>
-                <li><strong>Regular Play:</strong> Continues like normal Texas Hold'em after discard</li>
-                <li><strong>Best 5 Cards:</strong> Make the best hand from remaining 2 hole cards + 5 community cards</li>
-            </ul>
-            
-            <h4>🎯 Strategy Differences</h4>
-            <ul>
-                <li><strong>More Drawing Hands:</strong> Suited connectors and drawing hands gain value</li>
-                <li><strong>Pocket Pairs Stronger:</strong> Better odds of making sets</li>
-                <li><strong>Position Crucial:</strong> Seeing opponents' discards provides information</li>
-                <li><strong>Bigger Pots:</strong> More action due to stronger starting hands</li>
-            </ul>
-            
-            <h4>🧮 About This Calculator</h4>
-            <ul>
-                <li><strong>Monte Carlo Method:</strong> Runs thousands of simulations for accuracy</li>
-                <li><strong>All Combinations:</strong> Tests all possible 2-card selections from 3-card hands</li>
-                <li><strong>Pre & Post-Flop:</strong> Calculate equity before and after community cards</li>
-                <li><strong>Proven Algorithms:</strong> Based on standard poker evaluation methods</li>
-            </ul>
-        </div>
-    </div>
 
     <!-- Card Selector Modal -->
     <div id="modal" class="modal">
@@ -1542,6 +1558,26 @@ equity_results
             document.getElementById('results').innerHTML = '';
             document.getElementById('status').innerHTML = '';
         }
+
+        function clearPlayer(playerNumber) {
+            document.querySelectorAll(`[data-player="${playerNumber}"]`).forEach(card => {
+                card.innerHTML = '<div>?</div>';
+                card.classList.remove('filled');
+                delete card.dataset.card;
+            });
+        }
+
+        function clearCommunity() {
+            document.querySelectorAll('[data-player="community"]').forEach(card => {
+                card.innerHTML = '<div>?</div>';
+                card.classList.remove('filled');
+                delete card.dataset.card;
+            });
+        }
+
+        // Update the window.clearPlayer and window.clearCommunity assignments
+        window.clearPlayer = clearPlayer;
+        window.clearCommunity = clearCommunity;
         
         // Initialize when page loads
         window.addEventListener('load', () => {
@@ -1557,6 +1593,7 @@ equity_results
                 closeSelector();
             }
         }
+
         
         // Expose functions to global scope for HTML onclick handlers
         window.calculate = calculate;
@@ -1568,6 +1605,8 @@ equity_results
         window.toggleDebugConsole = toggleDebugConsole;
         window.clearDebugLog = clearDebugLog;
         window.copyDebugLog = copyDebugLog;
+        window.clearPlayer = clearPlayer;
+        window.clearCommunity = clearCommunity;
     </script>
 </body>
 </html>
